@@ -101,3 +101,5 @@ Edit these variables in `main.py` under "User Configurable Settings":
 ---
 
 ## Visual Guide for Click Points
+
+![Click Points](https://github.com/user-attachments/assets/6697f003-f5f4-4d7e-8d4c-7d353f0278da)
