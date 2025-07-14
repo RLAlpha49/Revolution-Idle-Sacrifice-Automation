@@ -33,29 +33,14 @@ from PIL import ImageGrab
 # This sets how close colors need to be to match (0 = exact match, higher = more tolerant)
 COLOR_TOLERANCE = 5  # Allow RGB values to differ by up to 5 points per channel
 
-# Performance Mode Settings
-# Set to True for maximum speed (may be less reliable on slower systems)
-PERFORMANCE_MODE = False
-
 # Delay Timings (in seconds)
 # Adjust these if the automation is too fast or too slow for your system/game.
 # These are the fastest timings I could get while keeping consistency.
-if PERFORMANCE_MODE:
-    # Ultra-fast timings for maximum performance (use with caution)
-    DELAY_BEFORE_CHECK = 0.001  # Very fast checking
-    DELAY_AFTER_PRESS = 0.005  # Minimal delay after press
-    DELAY_DRAG_DURATION = 0.005  # Faster drag
-    DELAY_AFTER_DRAG = 0.01  # Reduced delay after drag
-    DELAY_AFTER_CLICK = 0.001  # Minimal delay after click
-else:
-    # Conservative timings for reliability
-    DELAY_BEFORE_CHECK = (
-        0.02  # Delay before checking pixel colors in the automation loop
-    )
-    DELAY_AFTER_PRESS = 0.02  # Delay immediately after a mouse press
-    DELAY_DRAG_DURATION = 0.02  # Duration of the mouse drag action
-    DELAY_AFTER_DRAG = 0.10  # Delay after completing a drag action
-    DELAY_AFTER_CLICK = 0.01  # Delay after performing a click action
+DELAY_BEFORE_CHECK = 0.02  # Delay before checking pixel colors in the automation loop
+DELAY_AFTER_PRESS = 0.02  # Delay immediately after a mouse press
+DELAY_DRAG_DURATION = 0.02  # Duration of the mouse drag action
+DELAY_AFTER_DRAG = 0.11  # Delay after completing a drag action
+DELAY_AFTER_CLICK = 0.01  # Delay after performing a click action
 
 # Automation Exit Key
 # The keyboard key that will stop the automation. Default is 'q'.
