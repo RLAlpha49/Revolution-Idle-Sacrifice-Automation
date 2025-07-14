@@ -60,6 +60,9 @@ click_coords = {}
 # Click 3 (Sacrifice Button - hardcoded)
 target_rgbs = {}
 
+# Counter to track the number of successful zodiac sacrifices
+sacrifice_count = 0
+
 # State variable to track the setup process when in 'setup' mode
 # 0: Waiting for Click 1 (Zodiac Slot)
 # 1: Waiting for Click 2 (Sacrifice Drag Box)
@@ -108,6 +111,13 @@ def show_message(message, level="info"):
     elif MESSAGE_LEVEL == "info" and level == "info":
         # If info mode, only show info messages without a prefix
         print(f"\n{message}\n")
+
+
+def update_sacrifice_counter_display():
+    """
+    Updates the sacrifice counter display on the same line without creating new lines.
+    """
+    print(f"\rTotal Zodiac Sacrifices: {sacrifice_count}", end="", flush=True)
 
 
 def save_config():
@@ -251,7 +261,7 @@ def run_automation_mode():
     This function contains the core automation logic for Revolution Idle.
     It continuously checks conditions and performs mouse actions.
     """
-    global STOP_AUTOMATION, click_coords, target_rgbs
+    global STOP_AUTOMATION, click_coords, target_rgbs, sacrifice_count
 
     # Ensure all necessary coordinates and RGBs are loaded
     if not all(k in click_coords for k in ["click1", "click2", "click3"]) or not all(
@@ -264,10 +274,14 @@ def run_automation_mode():
         return
 
     STOP_AUTOMATION = False  # Reset stop flag for a new automation run
+    sacrifice_count = 0  # Reset sacrifice counter for a new automation run
     show_message(
         f"Revolution Idle Sacrifice Automation started. Press '{STOP_KEY}' to stop.",
         level="info",
     )
+
+    # Display initial sacrifice counter
+    update_sacrifice_counter_display()
 
     # Loop as long as the STOP_AUTOMATION flag is not set
     while not STOP_AUTOMATION:
@@ -313,6 +327,16 @@ def run_automation_mode():
                 ]  # Move mouse to Sacrifice Button
                 mouse.click(pynput.mouse.Button.left)
                 time.sleep(DELAY_AFTER_CLICK)
+
+                # Increment the sacrifice counter
+                sacrifice_count += 1
+                update_sacrifice_counter_display()
+
+                # Show detailed success message only in debug mode
+                show_message(
+                    f"Zodiac sacrificed successfully! Total sacrifices: {sacrifice_count}",
+                    level="debug",
+                )
             else:
                 show_message(
                     f"Color at Sacrifice Button ({current_rgb3}) does NOT match target ({target_rgbs['rgb3']}). Repeating first 2 steps (check Zodiac Slot and drag).",
@@ -328,6 +352,8 @@ def run_automation_mode():
         "Revolution Idle Sacrifice Automation loop finished. Returning to main menu.",
         level="info",
     )
+    # Add a newline after the counter display when automation ends
+    print()
 
 
 # --- Setup Mode Logic ---
@@ -467,6 +493,9 @@ def main():
                 "Exiting Revolution Idle Sacrifice Automation Script. Goodbye!",
                 level="info",
             )
+            # Stop the listeners before exiting
+            mouse_listener.stop()
+            keyboard_listener.stop()
             break  # Exit the main loop
         else:
             show_message(
