@@ -26,7 +26,8 @@ The script follows this logic:
    - If the button color matches `(219, 124, 0)`, clicks the button and restarts.
    - If not, repeats the first two steps.
 
-> **Note:** For consistent automation, auto-sell other zodiac rarities or wait for a 100% chance for an Immortal zodiac. The script relies on a consistent color at the zodiac slot.
+> [!NOTE]
+> For consistent automation, auto-sell other zodiac rarities or wait for a 100% chance for an Immortal zodiac. The script relies on a consistent color at the zodiac slot.
 
 ---
 
