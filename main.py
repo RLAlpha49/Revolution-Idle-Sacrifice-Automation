@@ -28,14 +28,34 @@ from PIL import ImageGrab
 # --- User Configurable Settings ---
 # You can easily change these values to customize the script's behavior.
 
+# Color Matching Tolerance
+# RGB values can vary slightly due to lighting, compression, etc.
+# This sets how close colors need to be to match (0 = exact match, higher = more tolerant)
+COLOR_TOLERANCE = 5  # Allow RGB values to differ by up to 5 points per channel
+
+# Performance Mode Settings
+# Set to True for maximum speed (may be less reliable on slower systems)
+PERFORMANCE_MODE = False
+
 # Delay Timings (in seconds)
 # Adjust these if the automation is too fast or too slow for your system/game.
 # These are the fastest timings I could get while keeping consistency.
-DELAY_BEFORE_CHECK = 0.02  # Delay before checking pixel colors in the automation loop
-DELAY_AFTER_PRESS = 0.02  # Delay immediately after a mouse press
-DELAY_DRAG_DURATION = 0.02  # Duration of the mouse drag action
-DELAY_AFTER_DRAG = 0.11  # Delay after completing a drag action
-DELAY_AFTER_CLICK = 0.01  # Delay after performing a click action
+if PERFORMANCE_MODE:
+    # Ultra-fast timings for maximum performance (use with caution)
+    DELAY_BEFORE_CHECK = 0.001  # Very fast checking
+    DELAY_AFTER_PRESS = 0.005  # Minimal delay after press
+    DELAY_DRAG_DURATION = 0.005  # Faster drag
+    DELAY_AFTER_DRAG = 0.01  # Reduced delay after drag
+    DELAY_AFTER_CLICK = 0.001  # Minimal delay after click
+else:
+    # Conservative timings for reliability
+    DELAY_BEFORE_CHECK = (
+        0.02  # Delay before checking pixel colors in the automation loop
+    )
+    DELAY_AFTER_PRESS = 0.02  # Delay immediately after a mouse press
+    DELAY_DRAG_DURATION = 0.02  # Duration of the mouse drag action
+    DELAY_AFTER_DRAG = 0.10  # Delay after completing a drag action
+    DELAY_AFTER_CLICK = 0.01  # Delay after performing a click action
 
 # Automation Exit Key
 # The keyboard key that will stop the automation. Default is 'q'.
@@ -63,6 +83,11 @@ target_rgbs = {}
 # Counter to track the number of successful zodiac sacrifices
 sacrifice_count = 0
 
+# Performance monitoring variables
+automation_start_time = 0
+total_automation_time = 0
+last_sacrifice_time = 0
+
 # State variable to track the setup process when in 'setup' mode
 # 0: Waiting for Click 1 (Zodiac Slot)
 # 1: Waiting for Click 2 (Sacrifice Drag Box)
@@ -81,13 +106,24 @@ CURRENT_MODE = None
 def get_pixel_color(x, y):
     """
     Gets the RGB color of the pixel at the given screen coordinates (x, y).
-    This function requires the 'Pillow' (PIL) library to be installed.
     """
     try:
-        # Take a screenshot of the entire screen
-        screenshot = ImageGrab.grab()
-        # Get the color of the pixel at the specified (x, y) coordinates
-        pixel_color = screenshot.getpixel((x, y))
+        # Take a small region screenshot instead of full screen for better performance
+        # This is much faster than capturing the entire screen
+        region_size = 5  # 5x5 pixel region around the target
+        left = max(0, x - region_size)
+        top = max(0, y - region_size)
+        right = x + region_size
+        bottom = y + region_size
+
+        screenshot = ImageGrab.grab(bbox=(left, top, right, bottom))
+
+        # Adjust coordinates for the smaller region
+        region_x = x - left
+        region_y = y - top
+
+        # Get the color of the pixel at the specified coordinates
+        pixel_color = screenshot.getpixel((region_x, region_y))
         # Return only the R, G, B components (ignore alpha channel if present)
         return pixel_color[:3]
     except Exception as e:
@@ -95,6 +131,55 @@ def get_pixel_color(x, y):
             f"ERROR: Could not get pixel color at ({x}, {y}): {e}", level="debug"
         )
         return None
+
+
+def get_multiple_pixel_colors(coordinates):
+    """
+    Efficiently gets pixel colors for multiple coordinates in a single screenshot.
+    This is much faster than multiple individual get_pixel_color calls.
+    """
+    try:
+        if not coordinates:
+            return []
+
+        # Find bounding box that contains all coordinates
+        min_x = min(coord[0] for coord in coordinates)
+        max_x = max(coord[0] for coord in coordinates)
+        min_y = min(coord[1] for coord in coordinates)
+        max_y = max(coord[1] for coord in coordinates)
+
+        # Add small padding
+        padding = 5
+        bbox = (min_x - padding, min_y - padding, max_x + padding, max_y + padding)
+
+        # Take single screenshot of the region
+        screenshot = ImageGrab.grab(bbox=bbox)
+
+        # Get colors for all coordinates
+        colors = []
+        for x, y in coordinates:
+            # Adjust coordinates for the region
+            region_x = x - bbox[0]
+            region_y = y - bbox[1]
+            pixel_color = screenshot.getpixel((region_x, region_y))
+            colors.append(pixel_color[:3])
+
+        return colors
+    except Exception as e:
+        show_message(f"ERROR: Could not get multiple pixel colors: {e}", level="debug")
+        return [None] * len(coordinates)
+
+
+def colors_match(color1, color2, tolerance=COLOR_TOLERANCE):
+    """
+    Check if two RGB colors match within the specified tolerance.
+    This makes the automation more robust against slight color variations.
+    """
+    if color1 is None or color2 is None:
+        return False
+
+    # Check if each RGB component is within tolerance
+    return all(abs(c1 - c2) <= tolerance for c1, c2 in zip(color1, color2))
 
 
 def show_message(message, level="info"):
@@ -117,7 +202,27 @@ def update_sacrifice_counter_display():
     """
     Updates the sacrifice counter display on the same line without creating new lines.
     """
-    print(f"\rTotal Zodiac Sacrifices: {sacrifice_count}", end="", flush=True)
+    current_time = time.time()
+    if automation_start_time > 0:
+        elapsed_time = current_time - automation_start_time
+        if sacrifice_count > 0:
+            avg_time_per_sacrifice = elapsed_time / sacrifice_count
+            sacrifices_per_minute = (
+                60 / avg_time_per_sacrifice if avg_time_per_sacrifice > 0 else 0
+            )
+            print(
+                f"\rSacrifices: {sacrifice_count} | Rate: {sacrifices_per_minute:.1f}/min | Time: {elapsed_time:.1f}s",
+                end="",
+                flush=True,
+            )
+        else:
+            print(
+                f"\rSacrifices: {sacrifice_count} | Time: {elapsed_time:.1f}s",
+                end="",
+                flush=True,
+            )
+    else:
+        print(f"\rTotal Zodiac Sacrifices: {sacrifice_count}", end="", flush=True)
 
 
 def save_config():
@@ -261,7 +366,12 @@ def run_automation_mode():
     This function contains the core automation logic for Revolution Idle.
     It continuously checks conditions and performs mouse actions.
     """
-    global STOP_AUTOMATION, click_coords, target_rgbs, sacrifice_count
+    global \
+        STOP_AUTOMATION, \
+        click_coords, \
+        target_rgbs, \
+        sacrifice_count, \
+        automation_start_time
 
     # Ensure all necessary coordinates and RGBs are loaded
     if not all(k in click_coords for k in ["click1", "click2", "click3"]) or not all(
@@ -275,6 +385,7 @@ def run_automation_mode():
 
     STOP_AUTOMATION = False  # Reset stop flag for a new automation run
     sacrifice_count = 0  # Reset sacrifice counter for a new automation run
+    automation_start_time = time.time()  # Track start time for performance statistics
     show_message(
         f"Revolution Idle Sacrifice Automation started. Press '{STOP_KEY}' to stop.",
         level="info",
@@ -287,11 +398,19 @@ def run_automation_mode():
     while not STOP_AUTOMATION:
         time.sleep(DELAY_BEFORE_CHECK)  # Configurable delay
 
-        # 1. Check the color at Click 1 (Zodiac Slot)
-        current_rgb1 = get_pixel_color(
-            click_coords["click1"][0], click_coords["click1"][1]
-        )
-        if current_rgb1 == target_rgbs["rgb1"]:
+        # Check both zodiac slot and sacrifice button colors in one screenshot
+        coordinates_to_check = [
+            click_coords["click1"],  # Zodiac slot
+            click_coords["click3"],  # Sacrifice button
+        ]
+        current_colors = get_multiple_pixel_colors(coordinates_to_check)
+
+        if current_colors[0] is None or current_colors[1] is None:
+            continue  # Skip this iteration if color detection failed
+
+        current_rgb1, current_rgb3 = current_colors
+
+        if colors_match(current_rgb1, target_rgbs["rgb1"]):
             show_message(
                 f"Color at Zodiac Slot ({current_rgb1}) matches target ({target_rgbs['rgb1']}). Performing drag...",
                 level="debug",
@@ -313,11 +432,12 @@ def run_automation_mode():
 
             time.sleep(DELAY_AFTER_DRAG)
 
-            # 3. Check the color at Click 3 (Sacrifice Button)
+            # 3. Check the sacrifice button color (we already have it from the batch check above)
+            # But we need to get it again after the drag action
             current_rgb3 = get_pixel_color(
                 click_coords["click3"][0], click_coords["click3"][1]
             )
-            if current_rgb3 == target_rgbs["rgb3"]:
+            if colors_match(current_rgb3, target_rgbs["rgb3"]):
                 show_message(
                     f"Color at Sacrifice Button ({current_rgb3}) matches target ({target_rgbs['rgb3']}). Clicking and restarting sequence...",
                     level="debug",
@@ -331,6 +451,10 @@ def run_automation_mode():
                 # Increment the sacrifice counter
                 sacrifice_count += 1
                 update_sacrifice_counter_display()
+
+                # Record the time of the last sacrifice
+                global last_sacrifice_time
+                last_sacrifice_time = time.time()
 
                 # Show detailed success message only in debug mode
                 show_message(
@@ -348,8 +472,11 @@ def run_automation_mode():
                 level="debug",
             )
 
+    # Calculate and display total automation time
+    global total_automation_time
+    total_automation_time = time.time() - automation_start_time
     show_message(
-        "Revolution Idle Sacrifice Automation loop finished. Returning to main menu.",
+        f"Revolution Idle Sacrifice Automation completed. Total time: {total_automation_time:.2f} seconds.",
         level="info",
     )
     # Add a newline after the counter display when automation ends
@@ -414,6 +541,10 @@ def display_help():
 
     You can open the 'main.py' file in a text editor
     and modify the following variables under the 'User Configurable Settings' section:
+
+    -   Color Matching Tolerance:
+        -   COLOR_TOLERANCE: Sets how close colors need to be to match (0 = exact match, higher = more tolerant).
+            Allows RGB values to differ by up to X points per channel (default X=5).
 
     -   Delay Timings:
         -   DELAY_BEFORE_CHECK: Delay before checking pixel colors in the automation loop.
