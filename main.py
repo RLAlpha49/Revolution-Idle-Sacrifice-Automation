@@ -131,7 +131,7 @@ def load_config():
     """
     global click_coords, target_rgbs
     try:
-        with open(CONFIG_FILE, "r") as f:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             config = json.load(f)
             click_coords = config.get("click_coords", {})
             # Convert RGB lists back to tuples for comparison
@@ -265,7 +265,8 @@ def run_automation_mode():
 
     STOP_AUTOMATION = False  # Reset stop flag for a new automation run
     show_message(
-        f"Revolution Idle Sacrifice Automation started. Press '{STOP_KEY}' to stop.", level="info"
+        f"Revolution Idle Sacrifice Automation started. Press '{STOP_KEY}' to stop.",
+        level="info",
     )
 
     # Loop as long as the STOP_AUTOMATION flag is not set
@@ -426,7 +427,9 @@ def main():
     """
     global CURRENT_MODE
 
-    show_message("Welcome to the Revolution Idle Sacrifice Automation Script!", level="info")
+    show_message(
+        "Welcome to the Revolution Idle Sacrifice Automation Script!", level="info"
+    )
 
     # Attempt to load configuration at startup
     load_config()
@@ -461,7 +464,8 @@ def main():
             display_help()
         elif mode_choice in ["4", "exit"]:
             show_message(
-                "Exiting Revolution Idle Sacrifice Automation Script. Goodbye!", level="info"
+                "Exiting Revolution Idle Sacrifice Automation Script. Goodbye!",
+                level="info",
             )
             break  # Exit the main loop
         else:
