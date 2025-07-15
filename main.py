@@ -10,28 +10,31 @@ from PIL import ImageGrab
 # and 'automation' to perform the repetitive actions.
 #
 # How it works:
-# 1. Checks the color of the zodiac slot.
-# 2. If the color matches, it drags the zodiac to the sacrifice box.
+# 1. Checks the colors of all configured zodiac slots in each cycle.
+# 2. When any zodiac slot's color matches its target, drags that zodiac to the sacrifice box.
 # 3. After the drag, it checks the color of the sacrifice button.
 # 4. If the sacrifice button's color matches, it clicks the button and restarts the sequence.
-#    If the sacrifice button's color does NOT match, it repeats steps 1 and 2.
+#    If the sacrifice button's color does NOT match, it continues checking zodiac slots.
 #
 # Important Notes for Revolution Idle:
-# - The first click (Click 1) should be the corner of the zodiac slot you wish to automatically sacrifice.
-#   For consistent automation, it is highly recommended to auto-sell other zodiac rarities or
-#   wait until you have a 100% chance for an Immortal zodiac, as the script relies on a consistent
-#   color at the zodiac slot.
-# - The second click (Click 2) should be the box or area where you drag the zodiac to sacrifice.
-# - The third click (Click 3) is the 'Sacrifice' button. Its target color is hardcoded to (219, 124, 0)
-#   to ensure reliability, as this button's color is expected to be consistent.
+# - You can configure multiple zodiac slots (unlimited by default, or limited by MAX_ZODIAC_SLOTS) during setup.
+#   Each slot will have its color remembered for matching during automation.
+# - For consistent automation, it is highly recommended to auto-sell other zodiac rarities or
+#   wait until you have a 100% chance for the desired zodiac type, as the script relies on
+#   consistent colors at the zodiac slots.
+# - The sacrifice drag box should be the area where you drag zodiacs to sacrifice them.
+# - The sacrifice button's target color is hardcoded to (219, 124, 0) to ensure reliability,
+#   as this button's color is expected to be consistent.
 
 # --- User Configurable Settings ---
 # You can easily change these values to customize the script's behavior.
 
 # Color Matching Tolerance
 # RGB values can vary slightly due to lighting, compression, etc.
+# When clicking on a zodiac slot, the RGB may darken during capture.
+# The default value of 15 works well.
 # This sets how close colors need to be to match (0 = exact match, higher = more tolerant)
-COLOR_TOLERANCE = 5  # Allow RGB values to differ by up to 5 points per channel
+COLOR_TOLERANCE = 15  # Allow RGB values to differ by up to 15 points per channel
 
 # Delay Timings (in seconds)
 # Adjust these if the automation is too fast or too slow for your system/game.
@@ -48,6 +51,20 @@ DELAY_AFTER_CLICK = 0.01  # Delay after performing a click action
 # For a list of special key names, refer to pynput.keyboard.Key documentation.
 STOP_KEY = "q"
 
+# Multiple Zodiac Slots Configuration
+# Maximum number of zodiac slots that can be configured for sacrifice.
+# Set this to the number of zodiac slots you want to monitor.
+# Set to -1 for unlimited slots, or a positive number to limit the maximum.
+# During setup, you can configure fewer slots than this maximum if desired.
+MAX_ZODIAC_SLOTS = -1  # -1 = unlimited slots, or set a positive number to limit
+
+# Debug Color Detection
+# Set to True to show detailed color matching information during automation.
+# This helps troubleshoot color tolerance issues.
+# MESSAGE_LEVEL must be set to 'debug' to see these messages.
+# Note: With unlimited zodiac slots, debug output will show all configured slots.
+DEBUG_COLOR_MATCHING = False  # Set to True for detailed color matching info
+
 # Message Verbosity
 # Set to 'info' for standard messages. Set to 'debug' for more detailed output.
 MESSAGE_LEVEL = "info"  # Options: 'info', 'debug'
@@ -58,11 +75,13 @@ mouse = pynput.mouse.Controller()
 # Flag to signal when the automation should stop
 STOP_AUTOMATION = False
 
-# Dictionary to store the captured coordinates for Click 1 (Zodiac Slot),
-# Click 2 (Sacrifice Drag Box), and Click 3 (Sacrifice Button)
+# Dictionary to store the captured coordinates for multiple Zodiac Slots,
+# Sacrifice Drag Box, and Sacrifice Button
+# Format: {"zodiac_slots": [(x1, y1), (x2, y2), ...], "sacrifice_box": (x, y), "sacrifice_button": (x, y)}
 click_coords = {}
-# Dictionary to store the target RGB colors for Click 1 (Zodiac Slot) and
-# Click 3 (Sacrifice Button - hardcoded)
+# Dictionary to store the target RGB colors for multiple Zodiac Slots and
+# Sacrifice Button - hardcoded
+# Format: {"zodiac_slots": [(r1, g1, b1), (r2, g2, b2), ...], "sacrifice_button": (r, g, b)}
 target_rgbs = {}
 
 # Counter to track the number of successful zodiac sacrifices
@@ -73,12 +92,12 @@ automation_start_time = 0
 total_automation_time = 0
 last_sacrifice_time = 0
 
-# State variable to track the setup process when in 'setup' mode
-# 0: Waiting for Click 1 (Zodiac Slot)
-# 1: Waiting for Click 2 (Sacrifice Drag Box)
-# 2: Waiting for Click 3 (Sacrifice Button)
-# 3: Setup complete
-CURRENT_SETUP_STEP = 0
+# State variables to track the setup process when in 'setup' mode
+# During setup, we first collect all zodiac slots, then the sacrifice box, then the sacrifice button
+CURRENT_SETUP_STEP = (
+    "zodiac_slots"  # "zodiac_slots", "sacrifice_box", "sacrifice_button", "complete"
+)
+ZODIAC_SLOT_COUNT = 0  # Tracks how many zodiac slots have been configured
 
 # Configuration file name
 CONFIG_FILE = "revolution_idle_zodiac_automation_config.json"
@@ -234,9 +253,44 @@ def load_config():
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             config = json.load(f)
             click_coords = config.get("click_coords", {})
-            # Convert RGB lists back to tuples for comparison
+            # Convert RGB data back to proper format
             loaded_target_rgbs = config.get("target_rgbs", {})
-            target_rgbs = {k: tuple(v) for k, v in loaded_target_rgbs.items()}
+            target_rgbs = {}
+
+            # Handle zodiac_slots as a list of RGB tuples
+            if "zodiac_slots" in loaded_target_rgbs:
+                target_rgbs["zodiac_slots"] = [
+                    tuple(rgb) for rgb in loaded_target_rgbs["zodiac_slots"]
+                ]
+
+            # Handle sacrifice_button as a single RGB tuple
+            if "sacrifice_button" in loaded_target_rgbs:
+                target_rgbs["sacrifice_button"] = tuple(
+                    loaded_target_rgbs["sacrifice_button"]
+                )
+
+            # Handle legacy format (for backward compatibility with old config files)
+            if "rgb1" in loaded_target_rgbs and "zodiac_slots" not in target_rgbs:
+                # Convert old single slot format to new multiple slots format
+                target_rgbs["zodiac_slots"] = [tuple(loaded_target_rgbs["rgb1"])]
+                show_message(
+                    "Converted legacy single zodiac slot configuration to new format."
+                )
+
+            if "rgb3" in loaded_target_rgbs and "sacrifice_button" not in target_rgbs:
+                # Convert old sacrifice button format to new format
+                target_rgbs["sacrifice_button"] = tuple(loaded_target_rgbs["rgb3"])
+
+            # Handle legacy click coordinates (for backward compatibility)
+            if "click1" in click_coords and "zodiac_slots" not in click_coords:
+                # Convert old single slot format to new multiple slots format
+                click_coords["zodiac_slots"] = [click_coords["click1"]]
+
+            if "click2" in click_coords and "sacrifice_box" not in click_coords:
+                click_coords["sacrifice_box"] = click_coords["click2"]
+
+            if "click3" in click_coords and "sacrifice_button" not in click_coords:
+                click_coords["sacrifice_button"] = click_coords["click3"]
 
         show_message(f"Revolution Idle configuration loaded from {CONFIG_FILE}")
         return True
@@ -263,7 +317,12 @@ def on_click(x, y, button, pressed):
     Callback function executed when a mouse button is pressed or released.
     Behavior depends on the current mode ('setup' or 'automation').
     """
-    global CURRENT_SETUP_STEP, click_coords, target_rgbs, CURRENT_MODE
+    global \
+        CURRENT_SETUP_STEP, \
+        ZODIAC_SLOT_COUNT, \
+        click_coords, \
+        target_rgbs, \
+        CURRENT_MODE
 
     # We only care about button presses, not releases
     if not pressed:
@@ -271,37 +330,73 @@ def on_click(x, y, button, pressed):
 
     if CURRENT_MODE == "setup":
         if button == pynput.mouse.Button.left:
-            if CURRENT_SETUP_STEP == 0:
-                # Capture Click 1 coordinates (Zodiac Slot) and its current RGB color
-                click_coords["click1"] = (x, y)
-                target_rgbs["rgb1"] = get_pixel_color(x, y)
+            if CURRENT_SETUP_STEP == "zodiac_slots":
+                # Initialize zodiac slots lists if not already done
+                if "zodiac_slots" not in click_coords:
+                    click_coords["zodiac_slots"] = []
+                    target_rgbs["zodiac_slots"] = []
+
+                # Capture zodiac slot coordinates and color
+                click_coords["zodiac_slots"].append((x, y))
+                slot_color = get_pixel_color(x, y)
+                target_rgbs["zodiac_slots"].append(slot_color)
+                ZODIAC_SLOT_COUNT += 1
+
                 show_message(
-                    f"Click 1 (Zodiac Slot) captured: {click_coords['click1']} with color {target_rgbs['rgb1']}. Now left-click to set the Sacrifice Drag Box (Click 2)."
+                    f"Zodiac Slot {ZODIAC_SLOT_COUNT} captured: ({x}, {y}) with color {slot_color}."
                 )
-                CURRENT_SETUP_STEP = 1  # Move to the next setup step
-            elif CURRENT_SETUP_STEP == 1:
-                # Capture Click 2 coordinates (Sacrifice Drag Box)
-                click_coords["click2"] = (x, y)
+
+                if MAX_ZODIAC_SLOTS == -1:
+                    # Unlimited slots - show option to continue or finish
+                    show_message(
+                        f"Left-click to add Zodiac Slot {ZODIAC_SLOT_COUNT + 1} (or right-click to finish adding zodiac slots and proceed to Sacrifice Drag Box)."
+                    )
+                elif ZODIAC_SLOT_COUNT < MAX_ZODIAC_SLOTS:
+                    # Limited slots - show current count and option to continue
+                    show_message(
+                        f"Left-click to add Zodiac Slot {ZODIAC_SLOT_COUNT + 1} (or right-click to finish adding zodiac slots and proceed to Sacrifice Drag Box)."
+                    )
+                else:
+                    # Reached maximum limit
+                    show_message(
+                        f"Maximum zodiac slots ({MAX_ZODIAC_SLOTS}) reached. Now left-click to set the Sacrifice Drag Box."
+                    )
+                    CURRENT_SETUP_STEP = "sacrifice_box"
+
+            elif CURRENT_SETUP_STEP == "sacrifice_box":
+                # Capture Sacrifice Drag Box coordinates
+                click_coords["sacrifice_box"] = (x, y)
                 show_message(
-                    f"Click 2 (Sacrifice Drag Box) captured: {click_coords['click2']}. Now left-click to set the Sacrifice Button (Click 3)."
+                    f"Sacrifice Drag Box captured: ({x}, {y}). Now left-click to set the Sacrifice Button."
                 )
-                CURRENT_SETUP_STEP = 2  # Move to the next setup step
-            elif CURRENT_SETUP_STEP == 2:
-                # Capture Click 3 coordinates (Sacrifice Button)
-                click_coords["click3"] = (x, y)
+                CURRENT_SETUP_STEP = "sacrifice_button"
+
+            elif CURRENT_SETUP_STEP == "sacrifice_button":
+                # Capture Sacrifice Button coordinates
+                click_coords["sacrifice_button"] = (x, y)
                 # Hardcoded RGB for the Sacrifice Button
-                target_rgbs["rgb3"] = (219, 124, 0)
+                target_rgbs["sacrifice_button"] = (219, 124, 0)
                 show_message(
-                    f"Click 3 (Sacrifice Button) captured: {click_coords['click3']}. Its target color is hardcoded to {target_rgbs['rgb3']}. Setup complete! Saving Revolution Idle configuration."
+                    f"Sacrifice Button captured: ({x}, {y}). Its target color is hardcoded to {target_rgbs['sacrifice_button']}."
                 )
-                CURRENT_SETUP_STEP = 3  # Mark setup as complete
+                show_message(
+                    f"Setup complete! Configured {len(click_coords['zodiac_slots'])} zodiac slots. Saving Revolution Idle configuration."
+                )
+                CURRENT_SETUP_STEP = "complete"
                 save_config()  # Save the captured configuration
-                # Do NOT return False here, as the listener should remain active for mode switching
+
         elif button == pynput.mouse.Button.right:
-            show_message(
-                "Right-click detected. In setup mode, please use Left-click for setup steps.",
-                level="info",
-            )
+            if CURRENT_SETUP_STEP == "zodiac_slots" and ZODIAC_SLOT_COUNT > 0:
+                # User wants to finish adding zodiac slots and proceed
+                show_message(
+                    f"Finished adding zodiac slots. {ZODIAC_SLOT_COUNT} zodiac slots configured. Now left-click to set the Sacrifice Drag Box."
+                )
+                CURRENT_SETUP_STEP = "sacrifice_box"
+            else:
+                show_message(
+                    "Right-click detected. In setup mode, right-click is only used to finish adding zodiac slots.",
+                    level="info",
+                )
     elif CURRENT_MODE == "automation":
         show_message(
             f"Click detected at: X={x}, Y={y}. In automation mode, clicks are performed by the script, not used for setup.",
@@ -349,7 +444,7 @@ def on_press(key):
 def run_automation_mode():
     """
     This function contains the core automation logic for Revolution Idle.
-    It continuously checks conditions and performs mouse actions.
+    It continuously checks conditions and performs mouse actions for multiple zodiac slots.
     """
     global \
         STOP_AUTOMATION, \
@@ -359,8 +454,9 @@ def run_automation_mode():
         automation_start_time
 
     # Ensure all necessary coordinates and RGBs are loaded
-    if not all(k in click_coords for k in ["click1", "click2", "click3"]) or not all(
-        k in target_rgbs for k in ["rgb1", "rgb3"]
+    required_keys = ["zodiac_slots", "sacrifice_box", "sacrifice_button"]
+    if not all(k in click_coords for k in required_keys) or not all(
+        k in target_rgbs for k in ["zodiac_slots", "sacrifice_button"]
     ):
         show_message(
             "Revolution Idle Sacrifice Automation cannot start: Missing configuration data. Please run in 'setup' mode first.",
@@ -368,11 +464,21 @@ def run_automation_mode():
         )
         return
 
+    # Verify we have at least one zodiac slot configured
+    if not click_coords["zodiac_slots"] or not target_rgbs["zodiac_slots"]:
+        show_message(
+            "Revolution Idle Sacrifice Automation cannot start: No zodiac slots configured. Please run in 'setup' mode first.",
+            level="info",
+        )
+        return
+
     STOP_AUTOMATION = False  # Reset stop flag for a new automation run
     sacrifice_count = 0  # Reset sacrifice counter for a new automation run
     automation_start_time = time.time()  # Track start time for performance statistics
+
+    zodiac_count = len(click_coords["zodiac_slots"])
     show_message(
-        f"Revolution Idle Sacrifice Automation started. Press '{STOP_KEY}' to stop.",
+        f"Revolution Idle Sacrifice Automation started with {zodiac_count} zodiac slot(s). Press '{STOP_KEY}' to stop.",
         level="info",
     )
 
@@ -383,77 +489,97 @@ def run_automation_mode():
     while not STOP_AUTOMATION:
         time.sleep(DELAY_BEFORE_CHECK)  # Configurable delay
 
-        # Check both zodiac slot and sacrifice button colors in one screenshot
-        coordinates_to_check = [
-            click_coords["click1"],  # Zodiac slot
-            click_coords["click3"],  # Sacrifice button
+        # Check all zodiac slots and sacrifice button colors in one screenshot
+        coordinates_to_check = click_coords["zodiac_slots"] + [
+            click_coords["sacrifice_button"]
         ]
         current_colors = get_multiple_pixel_colors(coordinates_to_check)
 
-        if current_colors[0] is None or current_colors[1] is None:
+        if None in current_colors:
             continue  # Skip this iteration if color detection failed
 
-        current_rgb1, current_rgb3 = current_colors
+        # Separate zodiac slot colors from sacrifice button color
+        zodiac_colors = current_colors[:-1]
 
-        if colors_match(current_rgb1, target_rgbs["rgb1"]):
-            show_message(
-                f"Color at Zodiac Slot ({current_rgb1}) matches target ({target_rgbs['rgb1']}). Performing drag...",
-                level="debug",
-            )
-
-            # 2. Hold left click and drag the mouse from Click 1 (Zodiac Slot) to Click 2 (Sacrifice Drag Box)
-            mouse.position = click_coords["click1"]  # Move mouse to Zodiac Slot
-            mouse.press(pynput.mouse.Button.left)
-            time.sleep(DELAY_AFTER_PRESS)
-            mouse.position = click_coords[
-                "click2"
-            ]  # Move mouse to Sacrifice Drag Box (drags the mouse)
-            time.sleep(DELAY_DRAG_DURATION)
-            mouse.release(pynput.mouse.Button.left)
-            show_message(
-                f"Dragged zodiac from {click_coords['click1']} to {click_coords['click2']}.",
-                level="debug",
-            )
-
-            time.sleep(DELAY_AFTER_DRAG)
-
-            # 3. Check the sacrifice button color (we already have it from the batch check above)
-            # But we need to get it again after the drag action
-            current_rgb3 = get_pixel_color(
-                click_coords["click3"][0], click_coords["click3"][1]
-            )
-            if colors_match(current_rgb3, target_rgbs["rgb3"]):
+        # Check each zodiac slot for a match
+        for slot_index, (current_color, target_color) in enumerate(
+            zip(zodiac_colors, target_rgbs["zodiac_slots"])
+        ):
+            # Show color comparison for debugging (controlled by DEBUG_COLOR_MATCHING flag)
+            if DEBUG_COLOR_MATCHING:
+                color_diff = [
+                    abs(c1 - c2) for c1, c2 in zip(current_color, target_color)
+                ]
+                max_diff = max(color_diff)
                 show_message(
-                    f"Color at Sacrifice Button ({current_rgb3}) matches target ({target_rgbs['rgb3']}). Clicking and restarting sequence...",
+                    f"Slot {slot_index + 1}: Current={current_color}, Target={target_color}, Diff={color_diff}, MaxDiff={max_diff}, Tolerance={COLOR_TOLERANCE}, Match={colors_match(current_color, target_color)}",
                     level="debug",
                 )
-                mouse.position = click_coords[
-                    "click3"
-                ]  # Move mouse to Sacrifice Button
-                mouse.click(pynput.mouse.Button.left)
-                time.sleep(DELAY_AFTER_CLICK)
 
-                # Increment the sacrifice counter
-                sacrifice_count += 1
-                update_sacrifice_counter_display()
-
-                # Record the time of the last sacrifice
-                global last_sacrifice_time
-                last_sacrifice_time = time.time()
-
-                # Show detailed success message only in debug mode
+            if colors_match(current_color, target_color):
+                slot_coords = click_coords["zodiac_slots"][slot_index]
                 show_message(
-                    f"Zodiac sacrificed successfully! Total sacrifices: {sacrifice_count}",
+                    f"✓ Zodiac Slot {slot_index + 1} matched! Current: {current_color}, Target: {target_color}. Performing drag...",
                     level="debug",
                 )
-            else:
+
+                # Hold left click and drag from the zodiac slot to the sacrifice box
+                mouse.position = slot_coords  # Move mouse to the matching zodiac slot
+                mouse.press(pynput.mouse.Button.left)
+                time.sleep(DELAY_AFTER_PRESS)
+                mouse.position = click_coords["sacrifice_box"]  # Move to sacrifice box
+                time.sleep(DELAY_DRAG_DURATION)
+                mouse.release(pynput.mouse.Button.left)
                 show_message(
-                    f"Color at Sacrifice Button ({current_rgb3}) does NOT match target ({target_rgbs['rgb3']}). Repeating first 2 steps (check Zodiac Slot and drag).",
-                    level="info",
+                    f"Dragged zodiac from slot {slot_index + 1} {slot_coords} to sacrifice box {click_coords['sacrifice_box']}.",
+                    level="debug",
                 )
+
+                time.sleep(DELAY_AFTER_DRAG)
+
+                # Check the sacrifice button color after the drag action
+                current_sacrifice_color = get_pixel_color(
+                    click_coords["sacrifice_button"][0],
+                    click_coords["sacrifice_button"][1],
+                )
+                if colors_match(
+                    current_sacrifice_color, target_rgbs["sacrifice_button"]
+                ):
+                    show_message(
+                        f"Color at Sacrifice Button ({current_sacrifice_color}) matches target ({target_rgbs['sacrifice_button']}). Clicking and restarting sequence...",
+                        level="debug",
+                    )
+                    mouse.position = click_coords[
+                        "sacrifice_button"
+                    ]  # Move to sacrifice button
+                    mouse.click(pynput.mouse.Button.left)
+                    time.sleep(DELAY_AFTER_CLICK)
+
+                    # Increment the sacrifice counter
+                    sacrifice_count += 1
+                    update_sacrifice_counter_display()
+
+                    # Record the time of the last sacrifice
+                    global last_sacrifice_time
+                    last_sacrifice_time = time.time()
+
+                    # Show detailed success message only in debug mode
+                    show_message(
+                        f"Zodiac from slot {slot_index + 1} sacrificed successfully! Total sacrifices: {sacrifice_count}",
+                        level="debug",
+                    )
+
+                    # Break out of the zodiac slot checking loop since we've performed an action
+                    break
+                else:
+                    show_message(
+                        f"Color at Sacrifice Button ({current_sacrifice_color}) does NOT match target ({target_rgbs['sacrifice_button']}). Continuing to check other zodiac slots.",
+                        level="debug",
+                    )
         else:
+            # This else clause executes only if no zodiac slot matched (no break occurred)
             show_message(
-                f"Color at Zodiac Slot ({current_rgb1}) does NOT match target ({target_rgbs['rgb1']}). Waiting for match...",
+                "No zodiac slots have matching colors. Waiting for a match...",
                 level="debug",
             )
 
@@ -470,24 +596,50 @@ def run_automation_mode():
 
 # --- Setup Mode Logic ---
 def run_setup_mode():
-    """Handles the interactive setup process."""
-    global CURRENT_SETUP_STEP, click_coords, target_rgbs
+    """Handles the interactive setup process for multiple zodiac slots."""
+    global CURRENT_SETUP_STEP, ZODIAC_SLOT_COUNT, click_coords, target_rgbs
 
-    CURRENT_SETUP_STEP = 0  # Reset for a new setup session
+    # Reset for a new setup session
+    CURRENT_SETUP_STEP = "zodiac_slots"
+    ZODIAC_SLOT_COUNT = 0
+    click_coords = {}
+    target_rgbs = {}
+
     show_message(
-        "Entering Setup Mode for Revolution Idle. Follow the prompts to capture coordinates.",
+        "Entering Setup Mode for Revolution Idle with Multiple Zodiac Slots support.",
         level="info",
     )
-    show_message("1. Left-click the corner of the Zodiac Slot (Click 1).", level="info")
-    show_message("2. Left-click the Sacrifice Drag Box (Click 2).", level="info")
+    if MAX_ZODIAC_SLOTS == -1:
+        show_message(
+            "You can configure unlimited zodiac slots for sacrifice automation.",
+            level="info",
+        )
+    else:
+        show_message(
+            f"You can configure up to {MAX_ZODIAC_SLOTS} zodiac slots for sacrifice automation.",
+            level="info",
+        )
     show_message(
-        "3. Left-click the Sacrifice Button (Click 3). Note: Its target color is hardcoded to (219, 124, 0) for reliability.",
+        "1. Left-click on each Zodiac Slot you want to monitor (at least 1 required).",
         level="info",
     )
+    show_message(
+        "2. Right-click when you're finished adding zodiac slots to proceed to the Sacrifice Drag Box.",
+        level="info",
+    )
+    show_message(
+        "3. Left-click on the Sacrifice Drag Box (where zodiacs are dragged to).",
+        level="info",
+    )
+    show_message(
+        "4. Left-click on the Sacrifice Button (its color is hardcoded for reliability).",
+        level="info",
+    )
+    show_message("Ready to capture Zodiac Slot 1. Left-click on the first zodiac slot.")
 
-    # Keep the setup process active until CURRENT_SETUP_STEP reaches 3
+    # Keep the setup process active until CURRENT_SETUP_STEP reaches "complete"
     # This loop will wait for clicks handled by on_click
-    while CURRENT_SETUP_STEP < 3:
+    while CURRENT_SETUP_STEP != "complete":
         time.sleep(0.1)  # Small sleep to prevent busy-waiting
 
     show_message("Setup mode completed. Returning to main menu.", level="info")
@@ -504,32 +656,46 @@ def display_help():
 
     1.  Setup Mode:
         Allows you to define the key locations and colors on your screen
-        that the automation will interact with. You will be prompted to
-        left-click on three specific points:
-        -   Click 1 (Zodiac Slot): The corner of the zodiac slot you want to sacrifice.
-            The script will remember its color.
-        -   Click 2 (Sacrifice Drag Box): The area where you drag the zodiac to sacrifice.
-        -   Click 3 (Sacrifice Button): The 'Sacrifice' button. Its color is
-            hardcoded to (219, 124, 0) for consistent detection.
+        that the automation will interact with. You will be prompted to:
+        -   Left-click on multiple Zodiac Slots (unlimited by default).
+            Each slot's color will be remembered for matching.
+            You can configure fewer slots than the maximum if desired.
+        -   Right-click when finished adding zodiac slots to proceed.
+        -   Left-click on the Sacrifice Drag Box (where zodiacs are dragged).
+        -   Left-click on the Sacrifice Button (color hardcoded to (219, 124, 0)).
         After setting these, the configuration is saved to 'revolution_idle_zodiac_automation_config.json'.
+        
+        NOTE: If you need help identifying the correct click points, check the visual guide
+        in the GitHub repository at: https://github.com/RLAlpha49/Revolution-Idle-Sacrifice-Automation
 
     2.  Automation Mode:
         Runs the automated sacrificing process using the saved configuration.
         The script will continuously:
-        -   Check the color of the Zodiac Slot.
-        -   If it matches the recorded color, it drags the zodiac to the Sacrifice Drag Box.
-        -   Then, it checks the color of the Sacrifice Button.
-        -   If the Sacrifice Button's color matches, it clicks it and restarts the cycle.
-        -   If the Sacrifice Button's color does NOT match, it re-checks the Zodiac Slot.
+        -   Check the colors of all configured Zodiac Slots in each cycle.
+        -   When any zodiac slot's color matches its target, drag that zodiac to the Sacrifice Box.
+        -   Check the color of the Sacrifice Button after each drag.
+        -   If the Sacrifice Button's color matches, click it and restart the cycle.
+        -   If the Sacrifice Button's color does NOT match, continue checking zodiac slots.
 
     --- User Configurable Settings (Edit these in the script file) ---
 
     You can open the 'main.py' file in a text editor
     and modify the following variables under the 'User Configurable Settings' section:
 
+    -   Multiple Zodiac Slots Configuration:
+        -   MAX_ZODIAC_SLOTS: Maximum number of zodiac slots that can be configured.
+            Set to -1 for unlimited slots (default), or a positive number to limit the maximum.
+            During setup, you can configure fewer slots than this maximum if desired.
+
     -   Color Matching Tolerance:
         -   COLOR_TOLERANCE: Sets how close colors need to be to match (0 = exact match, higher = more tolerant).
-            Allows RGB values to differ by up to X points per channel (default X=5).
+            Allows RGB values to differ by up to X points per channel (default X=15).
+            If zodiac automation only works on some slots, try increasing this value.
+
+    -   Debug Color Detection:
+        -   DEBUG_COLOR_MATCHING: Set to True to show detailed color matching information during automation.
+            This helps troubleshoot color tolerance issues by showing exact RGB differences.
+            Useful when zodiac slots don't match as expected.
 
     -   Delay Timings:
         -   DELAY_BEFORE_CHECK: Delay before checking pixel colors in the automation loop.
@@ -554,7 +720,7 @@ def display_help():
     --- How to Use ---
     1.  Install dependencies: `pip install pynput Pillow`
     2.  Run the script: `python main.py`
-    3.  Choose 'setup' (or 1) first to configure your click points.
+    3.  Choose 'setup' (or 1) first to configure your click points and zodiac slots.
     4.  Then, choose 'automation' (or 2) to start the process.
     5.  Press the configured STOP_KEY (default 'q') during automation to return to the main menu.
     6.  To exit the script completely, type 'exit' (or 4) in the main menu, or press Ctrl+C.
