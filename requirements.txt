@@ -1,0 +1,5 @@
+# Revolution Idle Sacrifice Automation Dependencies
+# Install with: pip install -r requirements.txt
+
+pynput>=1.7.6
+Pillow>=10.0.0

@@ -41,11 +41,16 @@ The script follows this logic:
 
 ### Installation
 
-1. **Save the Script:** Download `main.py`.
+1. **Clone Repository:**
+
+   ```bash
+   git clone https://github.com/RLAlpha49/Revolution-Idle-Sacrifice-Automation.git
+   ```
+
 2. **Install Libraries:**  
 
-   ```sh
-   pip install pynput Pillow
+   ```bash
+   pip install -r requirements.txt
    ```
 
 ---
@@ -85,7 +90,7 @@ The script follows this logic:
 
 ## User Configurable Settings
 
-Edit these variables in `main.py` under "User Configurable Settings":
+All user-configurable settings are located in `config/settings.py`:
 
 ### Multiple Zodiac Slots Configuration
 
@@ -173,6 +178,56 @@ Based on testing with Revolution Idle:
 
 > [!TIP]
 > For best results, click on a consistent part of each zodiac slot (e.g., always a corner) to ensure reliable color detection.
+
+---
+
+## Modules Overview
+
+### Project Structure
+
+```text
+Revolution Idle/
+├── main.py                  # Main entry point
+├── requirements.txt         # Python dependencies
+├── README.md                # This file
+├── LICENSE                  # License file
+├── config/                  # Configuration management
+│   ├── __init__.py
+│   ├── settings.py          # User-configurable settings
+│   └── config_manager.py    # Configuration loading/saving
+├── src/                     # Main source code
+│   ├── __init__.py
+│   ├── app.py              # Main application controller
+│   ├── automation_engine.py # Core automation logic
+│   ├── setup_manager.py    # Setup mode handler
+│   ├── input_handlers.py   # Mouse and keyboard event handlers
+│   └── help.py             # Help and documentation
+└── utils/                  # Utility functions
+    ├── __init__.py
+    ├── color_utils.py      # Color detection and matching
+    └── display_utils.py    # Console output and performance tracking
+```
+
+### Core Modules
+
+- **`src/app.py`**: Main application controller that orchestrates all components
+- **`src/automation_engine.py`**: Contains the core automation logic for zodiac sacrificing
+- **`src/setup_manager.py`**: Handles the interactive setup process
+- **`src/input_handlers.py`**: Manages mouse and keyboard event handling
+
+### Configuration
+
+- **`config/settings.py`**: All user-configurable settings
+- **`config/config_manager.py`**: Handles loading/saving configuration data
+
+### Utilities
+
+- **`utils/color_utils.py`**: Color detection and matching functions
+- **`utils/display_utils.py`**: Console output and performance tracking
+
+### Documentation
+
+- **`src/help.py`**: Comprehensive help and usage information
 
 ---
 
