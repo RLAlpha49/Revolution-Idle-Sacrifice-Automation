@@ -5,13 +5,14 @@ This module orchestrates the different components of the application
 and manages the main execution flow and user interface.
 """
 
-import pynput.mouse
 import pynput.keyboard
+import pynput.mouse
+
 from config.config_manager import ConfigManager
 from src.automation_engine import AutomationEngine
-from src.setup_manager import SetupManager
-from src.input_handlers import KeyboardHandler
 from src.help import display_help
+from src.input_handlers import KeyboardHandler
+from src.setup_manager import SetupManager
 from utils.display_utils import show_message
 
 
@@ -39,7 +40,9 @@ class RevolutionIdleApp:
 
         # Attempt to load configuration at startup
         if self.config_manager.load_config():
-            from config.settings import CONFIG_FILE # pylint: disable=import-outside-toplevel
+            from config.settings import (  # pylint: disable=import-outside-toplevel
+                CONFIG_FILE,
+            )
 
             show_message(f"Configuration loaded from {CONFIG_FILE}")
 

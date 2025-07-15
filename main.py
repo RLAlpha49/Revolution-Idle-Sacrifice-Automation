@@ -35,8 +35,8 @@ Author: RLAlpha49
 Repository: https://github.com/RLAlpha49/Revolution-Idle-Sacrifice-Automation
 """
 
-import sys
 import os
+import sys
 
 # Add the project root to Python path to enable imports
 project_root = os.path.dirname(os.path.abspath(__file__))

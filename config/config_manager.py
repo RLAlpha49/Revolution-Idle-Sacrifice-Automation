@@ -7,6 +7,7 @@ click coordinates and target RGB colors for zodiac slots and sacrifice button.
 
 import json
 from typing import Dict
+
 from config.settings import CONFIG_FILE
 
 
@@ -35,7 +36,7 @@ class ConfigManager:
                     indent=4,
                 )
             return True
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             print(f"ERROR: Error saving configuration: {e}")
             return False
 
@@ -82,7 +83,7 @@ class ConfigManager:
                 f"ERROR: Error decoding JSON from '{CONFIG_FILE}'. File might be corrupted."
             )
             return False
-        except Exception as e: # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             print(f"ERROR: Error loading configuration: {e}")
             return False
 

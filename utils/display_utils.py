@@ -6,6 +6,7 @@ and performance monitoring for the automation script.
 """
 
 import time
+
 from config.settings import MESSAGE_LEVEL
 
 

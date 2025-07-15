@@ -197,15 +197,15 @@ Revolution Idle/
 │   └── config_manager.py    # Configuration loading/saving
 ├── src/                     # Main source code
 │   ├── __init__.py
-│   ├── app.py              # Main application controller
+│   ├── app.py               # Main application controller
 │   ├── automation_engine.py # Core automation logic
-│   ├── setup_manager.py    # Setup mode handler
-│   ├── input_handlers.py   # Mouse and keyboard event handlers
-│   └── help.py             # Help and documentation
-└── utils/                  # Utility functions
+│   ├── setup_manager.py     # Setup mode handler
+│   ├── input_handlers.py    # Mouse and keyboard event handlers
+│   └── help.py              # Help and documentation
+└── utils/                   # Utility functions
     ├── __init__.py
-    ├── color_utils.py      # Color detection and matching
-    └── display_utils.py    # Console output and performance tracking
+    ├── color_utils.py       # Color detection and matching
+    └── display_utils.py     # Console output and performance tracking
 ```
 
 ### Core Modules

@@ -6,9 +6,11 @@ during automation mode for the Revolution Idle automation script.
 """
 
 from typing import Callable, Optional
-import pynput.mouse
+
 import pynput.keyboard
-from config.settings import STOP_KEY, MAX_ZODIAC_SLOTS
+import pynput.mouse
+
+from config.settings import MAX_ZODIAC_SLOTS, STOP_KEY
 from utils.color_utils import get_pixel_color
 from utils.display_utils import show_message
 

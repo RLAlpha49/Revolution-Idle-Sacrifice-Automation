@@ -4,8 +4,11 @@ Utility functions for color detection and matching.
 This module provides functions for capturing pixel colors from the screen
 and comparing colors with tolerance for the automation script.
 """
-from typing import List, Tuple, Optional
+
+from typing import List, Optional, Tuple
+
 from PIL import ImageGrab
+
 from config.settings import COLOR_TOLERANCE
 
 
@@ -38,8 +41,12 @@ def get_pixel_color(x: int, y: int) -> Optional[Tuple[int, int, int]]:
         # Get the color of the pixel at the specified coordinates
         pixel_color = screenshot.getpixel((region_x, region_y))
         # Return only the R, G, B components (ignore alpha channel if present)
-        return pixel_color[:3]
-    except Exception as e: # pylint: disable=broad-except
+        if isinstance(pixel_color, (tuple, list)) and len(pixel_color) >= 3:
+            return (int(pixel_color[0]), int(pixel_color[1]), int(pixel_color[2]))
+
+        print(f"ERROR: Unexpected pixel color format: {pixel_color}")
+        return None
+    except Exception as e:  # pylint: disable=broad-except
         print(f"ERROR: Could not get pixel color at ({x}, {y}): {e}")
         return None
 
@@ -81,10 +88,17 @@ def get_multiple_pixel_colors(
             region_x = x - bbox[0]
             region_y = y - bbox[1]
             pixel_color = screenshot.getpixel((region_x, region_y))
-            colors.append(pixel_color[:3])
+
+            # Handle different pixel color formats
+            if isinstance(pixel_color, (tuple, list)) and len(pixel_color) >= 3:
+                colors.append(
+                    (int(pixel_color[0]), int(pixel_color[1]), int(pixel_color[2]))
+                )
+            else:
+                colors.append(None)
 
         return colors
-    except Exception as e: # pylint: disable=broad-except
+    except Exception as e:  # pylint: disable=broad-except
         print(f"ERROR: Could not get multiple pixel colors: {e}")
         return [None] * len(coordinates)
 

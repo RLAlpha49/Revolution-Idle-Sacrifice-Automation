@@ -6,9 +6,10 @@ zodiac slots, sacrifice box, and sacrifice button coordinates and colors.
 """
 
 import time
+
 from config.settings import MAX_ZODIAC_SLOTS
+from src.input_handlers import MouseHandler, SetupState
 from utils.display_utils import show_message
-from src.input_handlers import SetupState, MouseHandler
 
 
 class SetupManager:

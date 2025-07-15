@@ -7,18 +7,20 @@ mouse actions for zodiac sacrificing in Revolution Idle.
 
 import time
 from typing import Dict, Tuple
+
 import pynput.mouse
+
 from config.settings import (
-    DELAY_BEFORE_CHECK,
-    DELAY_AFTER_PRESS,
-    DELAY_DRAG_DURATION,
-    DELAY_AFTER_DRAG,
-    DELAY_AFTER_CLICK,
-    DEBUG_COLOR_MATCHING,
     COLOR_TOLERANCE,
+    DEBUG_COLOR_MATCHING,
+    DELAY_AFTER_CLICK,
+    DELAY_AFTER_DRAG,
+    DELAY_AFTER_PRESS,
+    DELAY_BEFORE_CHECK,
+    DELAY_DRAG_DURATION,
 )
-from utils.color_utils import get_multiple_pixel_colors, colors_match, get_pixel_color
-from utils.display_utils import show_message, PerformanceTracker
+from utils.color_utils import colors_match, get_multiple_pixel_colors, get_pixel_color
+from utils.display_utils import PerformanceTracker, show_message
 
 
 class AutomationEngine:
