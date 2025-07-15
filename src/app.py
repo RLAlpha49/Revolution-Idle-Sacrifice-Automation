@@ -88,7 +88,9 @@ class RevolutionIdleApp:
                 self._run_automation_mode()
             elif choice in ["3", "help"]:
                 display_help()
-            elif choice in ["4", "exit"]:
+            elif choice in ["4", "settings"]:
+                self._reload_settings()
+            elif choice in ["5", "exit"]:
                 show_message(
                     "Exiting Revolution Idle Sacrifice Automation Script. Goodbye!",
                     level="info",
@@ -96,7 +98,7 @@ class RevolutionIdleApp:
                 break
             else:
                 show_message(
-                    "Invalid choice. Please enter '1', 'setup', '2', 'automation', '3', 'help', '4', or 'exit'.",
+                    "Invalid choice. Please enter '1', 'setup', '2', 'automation', '3', 'help', '4', 'settings', '5', or 'exit'.",
                     level="info",
                 )
 
@@ -109,10 +111,13 @@ class RevolutionIdleApp:
         print("1. Setup Mode (Configure click points and colors)")
         print("2. Automation Mode (Run the automation)")
         print("3. Help (Learn more about the script and settings)")
-        print("4. Exit (Quit the script)")
+        print("4. Reload Settings (Reload settings from user_settings.json)")
+        print("5. Exit (Quit the script)")
 
         return (
-            input("Enter your choice (1/setup, 2/automation, 3/help, 4/exit): ")
+            input(
+                "Enter your choice (1/setup, 2/automation, 3/help, 4/settings, 5/exit): "
+            )
             .lower()
             .strip()
         )
@@ -155,3 +160,21 @@ class RevolutionIdleApp:
     def get_current_mode(self):
         """Get the current operation mode."""
         return self.current_mode
+
+    def _reload_settings(self):
+        """Reload settings from user_settings.json file."""
+        try:
+            from config.settings import (  # pylint: disable=import-outside-toplevel
+                reload_settings,
+            )
+
+            reload_settings()
+            show_message(
+                "Settings reloaded successfully from user_settings.json", level="info"
+            )
+            show_message(
+                "Note: Some settings may require restarting the script to take effect.",
+                level="info",
+            )
+        except Exception as e:  # pylint: disable=broad-except
+            show_message(f"Failed to reload settings: {e}", level="info")

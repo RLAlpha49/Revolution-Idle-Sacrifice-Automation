@@ -9,8 +9,9 @@ This script automates the zodiac sacrificing process in the game **Revolution Id
 - **Two Modes:**
   - **Setup Mode:** Configure on-screen locations (coordinates) and colors for your specific computer and game resolution.
   - **Automation Mode:** Runs the automated sacrificing process using your saved configuration.
-- **Configurable Settings:** Adjust delays, stop key, slot limits, and message verbosity directly in the script
+- **Configurable Settings:** Adjust delays, stop key, slot limits, and message verbosity through an external settings file
 - **Persistent Configuration:** Saves settings to `revolution_idle_zodiac_automation_config.json` for reuse
+- **User Settings File:** Customize script behavior via `user_settings.json` (works with compiled executables)
 - **Flexible Stop Key:** Use a character or special key (e.g., `esc`, `space`, `ctrl`) to stop automation
 
 ---
@@ -71,7 +72,8 @@ The script follows this logic:
    1. Setup Mode (Configure click points and colors)
    2. Automation Mode (Run the automation)
    3. Help (Learn more about the script and settings)
-   4. Exit (Quit the script)
+   4. Reload Settings (Reload settings from user_settings.json)
+   5. Exit (Quit the script)
    ```
 
    - **1 or setup:** Guides you to set multiple click points:
@@ -83,47 +85,23 @@ The script follows this logic:
    - **2 or automation:** Starts automation using saved config  
      Stop with the configured STOP_KEY (default: `q`)
    - **3 or help:** Shows detailed info
-   - **4 or exit:** Quits the script  
+   - **4 or settings:** Reloads settings from `user_settings.json`
+   - **5 or exit:** Quits the script  
      (You can also press `Ctrl+C` to quit anytime)
 
 ---
 
 ## User Configurable Settings
 
-All user-configurable settings are located in `config/settings.py`:
+Settings are managed through an external `user_settings.json` file that is automatically created when you first run the script.
 
-### Multiple Zodiac Slots Configuration
+### Settings File
 
-- `MAX_ZODIAC_SLOTS`: Maximum number of zodiac slots (default: `-1` for unlimited)
-  - Set to `-1` for unlimited slots
-  - Set to a positive number to limit the maximum
+The `user_settings.json` file contains all configurable options with helpful comments. You can modify this file with any text editor and either restart the script or use the "Reload Settings" option in the main menu.
 
-### Color Matching
+For detailed information about all available settings, see [SETTINGS_GUIDE.md](SETTINGS_GUIDE.md).
 
-- `COLOR_TOLERANCE`: How close colors need to match (default: `15`)
-  - `0` = exact match, higher = more tolerant
-  - Increase if zodiac automation only works on some slots
-- `DEBUG_COLOR_MATCHING`: Show detailed color matching info (default: `False`)
-  - Set to `True` for troubleshooting color tolerance issues
-  - Requires `MESSAGE_LEVEL = "debug"` to see output
-
-### Timing Controls
-
-Adjust for your computer/game responsiveness. Smaller = faster, but less reliable.
-
-- `DELAY_BEFORE_CHECK`: Delay before checking pixel colors (seconds)
-- `DELAY_AFTER_PRESS`: Delay after mouse press (seconds)
-- `DELAY_DRAG_DURATION`: Mouse drag duration (seconds)
-- `DELAY_AFTER_DRAG`: Delay after drag (seconds)
-- `DELAY_AFTER_CLICK`: Delay after click (seconds)
-
-### User Interface
-
-- `STOP_KEY`: Key to stop automation (default: `'q'`)
-  - Can be a character or special key (e.g., `'esc'`, `'space'`, `'ctrl'`, etc.)
-- `MESSAGE_LEVEL`: Console output verbosity
-  - `'info'`: Standard messages (default)
-  - `'debug'`: Detailed messages for troubleshooting
+---
 
 ## Troubleshooting
 
@@ -131,16 +109,17 @@ Adjust for your computer/game responsiveness. Smaller = faster, but less reliabl
 
 If the automation only works on some zodiac slots:
 
-1. **Increase Color Tolerance:** Set `COLOR_TOLERANCE` to a higher value (try 20-25)
-2. **Enable Debug Mode:**
+1. **Increase Color Tolerance:** Set `color_tolerance` to a higher value (try 20-25) in `user_settings.json`
+2. **Enable Debug Mode:** In `user_settings.json`, set:
 
-   ```python
-   DEBUG_COLOR_MATCHING = True
-   MESSAGE_LEVEL = "debug"
+   ```json
+   "debug_color_matching": true,
+   "message_level": "debug"
    ```
 
 3. **Analyze Output:** Look for `MaxDiff` values that exceed your tolerance
 4. **Adjust Accordingly:** Set tolerance higher than the maximum difference you see
+5. **Reload Settings:** Use option 4 in the main menu or restart the script
 
 ### Setup Guidance
 
