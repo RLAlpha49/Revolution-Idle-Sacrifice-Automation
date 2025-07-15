@@ -25,6 +25,14 @@ from PIL import ImageGrab
 # - The sacrifice drag box should be the area where you drag zodiacs to sacrifice them.
 # - The sacrifice button's target color is hardcoded to (219, 124, 0) to ensure reliability,
 #   as this button's color is expected to be consistent.
+#
+# Performance Information:
+# - Based on testing, the script can achieve approximately 230 sacrifices per minute with 1 slot
+#   configured and the fastest possible timing settings.
+# - I can generate around 6 unities per second, while the script reaches a soft limit
+#   of about 3.8 sacrifices per second due to timing constraints and game responsiveness.
+# - Your performance may vary depending on your timing settings, computer performance, game
+#   progression, and the number of zodiac slots configured. More slots may reduce per-slot efficiency.
 
 # --- User Configurable Settings ---
 # You can easily change these values to customize the script's behavior.
@@ -716,6 +724,24 @@ def display_help():
         -   MESSAGE_LEVEL: Controls the amount of information printed to the console.
             -   'info': Shows standard operational messages. (Default)
             -   'debug': Shows more detailed messages, useful for troubleshooting.
+
+    --- Performance Information ---
+
+    Based on testing with Revolution Idle:
+    -   Script Performance: Approximately 230 sacrifices per minute with 1 slot configured
+        and optimal timing settings.
+    -   Manual vs Automation: I can achieve ~6 unities per second, while the script
+        reaches a soft limit of ~3.8 sacrifices per second due to timing constraints.
+    -   Performance Factors: Your results may vary depending on:
+        •   Timing settings (faster settings = higher risk of inconsistency)
+        •   Computer performance and responsiveness
+        •   Current game progression and zodiac generation rate
+        •   Number of zodiac slots configured (more slots may reduce per-slot efficiency)
+    -   Optimization Tips: For maximum performance, use a single slot with the fastest
+        timing settings that still maintain reliability.
+
+    NOTE: The 230 sacrifices/minute rate represents a practical soft limit due to game
+    timing constraints and automation overhead. Individual results may vary.
 
     --- How to Use ---
     1.  Install dependencies: `pip install pynput Pillow`

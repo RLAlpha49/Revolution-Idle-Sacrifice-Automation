@@ -143,6 +143,24 @@ If you need help identifying the correct click points, check the visual guide be
 
 ---
 
+## Performance Information
+
+Based on testing with Revolution Idle:
+
+- **Script Performance:** Approximately **230 sacrifices per minute** with 1 slot configured and optimal timing settings
+- **Manual vs Automation:** I can achieve ~6 unities per second, while the script reaches a soft limit of ~3.8 sacrifices per second
+- **Performance Factors:** Your results may vary depending on:
+  - Timing settings (faster settings = higher risk of inconsistency)
+  - Computer performance and responsiveness
+  - Current game progression and zodiac generation rate
+  - Number of zodiac slots configured (more slots may reduce per-slot efficiency)
+- **Optimization Tips:** For maximum performance, use a single slot with the fastest timing settings that still maintain reliability
+
+> [!NOTE]
+> The 230 sacrifices/minute rate represents a practical soft limit due to game timing constraints and automation overhead. Individual results may vary based on system performance and game state.
+
+---
+
 ## Visual Guide for Click Points
 
 ![Click Points](https://github.com/user-attachments/assets/6697f003-f5f4-4d7e-8d4c-7d353f0278da)
