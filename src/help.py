@@ -101,15 +101,6 @@ def get_help_text():
 
     NOTE: The 230 sacrifices/minute rate represents a practical soft limit due to game
     timing constraints and automation overhead. Individual results may vary.
-
-    --- How to Use ---
-    1.  Install dependencies: `pip install -r requirements.txt`
-    2.  Run the script: `python main.py`
-    3.  Choose 'setup' (or 1) first to configure your click points and zodiac slots.
-    4.  Then, choose 'automation' (or 2) to start the process.
-    5.  Use 'settings' (or 4) to reload settings from user_settings.json after making changes.
-    6.  Press the configured stop_key (default 'q') during automation to return to the main menu.
-    7.  To exit the script completely, type 'exit' (or 5) in the main menu, or press Ctrl+C.
     """
 
 
