@@ -35,9 +35,9 @@ Author: RLAlpha49
 Repository: https://github.com/RLAlpha49/Revolution-Idle-Sacrifice-Automation
 """
 
+import argparse
 import os
 import sys
-import argparse
 
 # Add the project root to Python path to enable imports
 project_root = os.path.dirname(os.path.abspath(__file__))
@@ -54,55 +54,56 @@ Examples:
   python main.py               # Run in CLI mode (default)
   python main.py --cli         # Run in CLI mode (explicit)
   python main.py --gui         # Run in GUI mode
-        """
+        """,
     )
-    
+
     mode_group = parser.add_mutually_exclusive_group()
     mode_group.add_argument(
-        "--cli", 
-        action="store_true", 
-        help="Run in CLI mode (default)"
+        "--cli", action="store_true", help="Run in CLI mode (default)"
     )
     mode_group.add_argument(
-        "--gui", 
-        action="store_true", 
-        help="Run in GUI mode using CustomTkinter"
+        "--gui", action="store_true", help="Run in GUI mode using CustomTkinter"
     )
-    
+
     return parser.parse_args()
 
 
 def main():
     """Main entry point for the Revolution Idle Sacrifice Automation Script."""
     args = parse_arguments()
-    
+
     # Default to CLI mode if no mode specified
     use_gui = args.gui
-    
+
     try:
         if use_gui:
             # Try to import GUI dependencies
             try:
-                import customtkinter  # pylint: disable=import-outside-toplevel,unused-import
-                from src.gui_app import RevolutionIdleGUI  # pylint: disable=import-outside-toplevel
-                
+                from src.gui_app import (  # pylint: disable=import-outside-toplevel
+                    RevolutionIdleGUI,
+                )
+
                 print("Starting Revolution Idle Automation in GUI mode...")
                 app = RevolutionIdleGUI()
                 app.run()
-                
+
             except ImportError as e:
                 print(f"Error: GUI mode requires additional dependencies: {e}")
-                print("Please install the GUI dependencies: pip install customtkinter>=5.2.0")
+                print(
+                    "Please install the GUI dependencies: pip install customtkinter>=5.2.0"
+                )
                 print("Alternatively, run in CLI mode: python main.py --cli")
                 sys.exit(1)
         else:
             # CLI mode
-            from src.app import RevolutionIdleApp  # pylint: disable=import-outside-toplevel
-            
+            from src.app import (  # pylint: disable=import-outside-toplevel
+                RevolutionIdleApp,
+            )
+
             print("Starting Revolution Idle Automation in CLI mode...")
             app = RevolutionIdleApp()
             app.run()
-            
+
     except KeyboardInterrupt:
         print("\n\nScript interrupted by user (Ctrl+C). Exiting...")
         sys.exit(0)
