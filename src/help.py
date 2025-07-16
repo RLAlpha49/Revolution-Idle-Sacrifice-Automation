@@ -8,9 +8,9 @@ functionality, configuration options, and usage instructions.
 from utils.display_utils import show_message
 
 
-def display_help():
-    """Displays information about the script and its configurable options."""
-    help_message = """
+def get_help_text():
+    """Returns the help text as a string for GUI use."""
+    return """
     --- Revolution Idle Sacrifice Automation Script Help ---
 
     This script automates the zodiac sacrificing process in Revolution Idle.
@@ -111,4 +111,9 @@ def display_help():
     6.  Press the configured stop_key (default 'q') during automation to return to the main menu.
     7.  To exit the script completely, type 'exit' (or 5) in the main menu, or press Ctrl+C.
     """
+
+
+def display_help():
+    """Displays information about the script and its configurable options."""
+    help_message = get_help_text()
     show_message(help_message, level="info")

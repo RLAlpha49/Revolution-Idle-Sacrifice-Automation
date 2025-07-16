@@ -6,7 +6,10 @@ This script automates the zodiac sacrificing process in the game **Revolution Id
 
 ## Features
 
-- **Two Modes:**
+- **Two Interface Modes:**
+  - **CLI Mode:** Traditional command-line interface
+  - **GUI Mode:** Modern graphical interface using CustomTkinter
+- **Two Operation Modes:**
   - **Setup Mode:** Configure on-screen locations (coordinates) and colors for your specific computer and game resolution.
   - **Automation Mode:** Runs the automated sacrificing process using your saved configuration.
 - **Configurable Settings:** Adjust delays, stop key, slot limits, and message verbosity through an external settings file
@@ -39,6 +42,7 @@ The script follows this logic:
 - Python 3.x
 - `pynput` library (for mouse/keyboard control)
 - `Pillow` library (for screen capture and pixel color detection)
+- `customtkinter` library (for GUI mode - optional)
 
 ### Installation
 
@@ -58,11 +62,32 @@ The script follows this logic:
 
 ## Usage
 
-1. **Run the Script:**  
-   Navigate to the script directory and run:
+### Running the Script
 
+You can choose between CLI and GUI modes:
+
+**CLI Mode (Traditional):**
+```sh
+python main.py --cli
+# or simply
+python main.py
+```
+
+**GUI Mode (Modern Interface):**
+```sh
+python main.py --gui
+```
+
+**Help:**
+```sh
+python main.py --help
+```
+
+### CLI Mode
+
+1. **Run CLI Mode:**  
    ```sh
-   python main.py
+   python main.py --cli
    ```
 
 2. **Select a Mode:**  
@@ -76,18 +101,34 @@ The script follows this logic:
    5. Exit (Quit the script)
    ```
 
-   - **1 or setup:** Guides you to set multiple click points:
-     - **Multiple Zodiac Slots:** Left-click on each zodiac slot you want to monitor (unlimited by default)
-     - **Right-click** when finished adding zodiac slots to proceed
-     - **Sacrifice Drag Box:** Where zodiacs are dragged to sacrifice
-     - **Sacrifice Button:** The sacrifice confirmation button
-     - Saves configuration to `revolution_idle_zodiac_automation_config.json`
-   - **2 or automation:** Starts automation using saved config  
-     Stop with the configured STOP_KEY (default: `q`)
-   - **3 or help:** Shows detailed info
-   - **4 or settings:** Reloads settings from `user_settings.json`
-   - **5 or exit:** Quits the script  
-     (You can also press `Ctrl+C` to quit anytime)
+### GUI Mode
+
+1. **Run GUI Mode:**  
+   ```sh
+   python main.py --gui
+   ```
+
+2. **Use the Interface:**
+   - **Setup Mode:** Click the "Setup Mode" button to configure click points and colors
+   - **Start/Stop Automation:** Click the "Start Automation" button to begin/stop automation
+   - **Help:** Click the "Help" button to view detailed instructions
+   - **Reload Settings:** Click "Reload Settings" to refresh settings from `user_settings.json`
+   - **Activity Log:** Monitor real-time activity and status updates
+
+### Configuration Process (Both Modes)
+
+- **1 or setup:** Guides you to set multiple click points:
+  - **Multiple Zodiac Slots:** Left-click on each zodiac slot you want to monitor (unlimited by default)
+  - **Right-click** when finished adding zodiac slots to proceed
+  - **Sacrifice Drag Box:** Where zodiacs are dragged to sacrifice
+  - **Sacrifice Button:** The sacrifice confirmation button
+  - Saves configuration to `revolution_idle_zodiac_automation_config.json`
+- **2 or automation:** Starts automation using saved config  
+  Stop with the configured STOP_KEY (default: `q`)
+- **3 or help:** Shows detailed info
+- **4 or settings:** Reloads settings from `user_settings.json`
+- **5 or exit:** Quits the script  
+  (You can also press `Ctrl+C` to quit anytime)
 
 ---
 
