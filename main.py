@@ -81,9 +81,7 @@ def main() -> None:
         if use_gui:
             # Try to import GUI dependencies
             try:
-                from src.gui_app import (  # pylint: disable=import-outside-toplevel
-                    RevolutionIdleGUI,
-                )
+                from src.gui import RevolutionIdleGUI  # pylint: disable=import-outside-toplevel
 
                 print("Starting Revolution Idle Automation in GUI mode...")
                 gui_app = RevolutionIdleGUI()
