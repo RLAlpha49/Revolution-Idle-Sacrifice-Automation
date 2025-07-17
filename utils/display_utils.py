@@ -33,10 +33,10 @@ def show_message(message: str, level: str = "info") -> None:
 class PerformanceTracker:
     """Tracks performance statistics for the automation script."""
 
-    def __init__(self):
-        self.sacrifice_count = 0
-        self.automation_start_time = 0
-        self.last_sacrifice_time = 0
+    def __init__(self) -> None:
+        self.sacrifice_count: int = 0
+        self.automation_start_time: float = 0
+        self.last_sacrifice_time: float = 0
 
     def start_tracking(self) -> None:
         """Start tracking automation performance."""
@@ -61,7 +61,9 @@ class PerformanceTracker:
                     60 / avg_time_per_sacrifice if avg_time_per_sacrifice > 0 else 0
                 )
                 print(
-                    f"\rSacrifices: {self.sacrifice_count} | Rate: {sacrifices_per_minute:.1f}/min | Time: {elapsed_time:.1f}s",
+                    f"\rSacrifices: {self.sacrifice_count} | "
+                    f"Rate: {sacrifices_per_minute:.1f}/min | "
+                    f"Time: {elapsed_time:.1f}s",
                     end="",
                     flush=True,
                 )

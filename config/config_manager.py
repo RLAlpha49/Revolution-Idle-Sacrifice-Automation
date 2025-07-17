@@ -14,7 +14,7 @@ from config.settings import CONFIG_FILE
 class ConfigManager:
     """Manages configuration data for the automation script."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.click_coords: Dict = {}
         self.target_rgbs: Dict = {}
 

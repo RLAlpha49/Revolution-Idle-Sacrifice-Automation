@@ -6,7 +6,7 @@ mouse actions for zodiac sacrificing in Revolution Idle.
 """
 
 import time
-from typing import Dict, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import pynput.mouse
 
@@ -26,19 +26,23 @@ from utils.display_utils import PerformanceTracker, show_message
 class AutomationEngine:
     """Core automation engine for Revolution Idle zodiac sacrificing."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.mouse = pynput.mouse.Controller()
         self.performance_tracker = PerformanceTracker()
         self.is_running = False
 
     def run_automation(
-        self, click_coords: Dict, target_rgbs: Dict, stop_callback=None
+        self,
+        click_coords: Dict,
+        target_rgbs: Dict,
+        stop_callback: Optional[Callable[[], bool]] = None,
     ) -> None:
         """
         Main automation loop for Revolution Idle zodiac sacrificing.
 
         Args:
-            click_coords: Dictionary containing coordinates for zodiac slots, sacrifice box, and button
+            click_coords: Dictionary containing coordinates for zodiac slots,
+                sacrifice box, and button
             target_rgbs: Dictionary containing target RGB colors for matching
             stop_callback: Function to check if automation should stop
         """
@@ -52,7 +56,8 @@ class AutomationEngine:
         zodiac_count = len(click_coords["zodiac_slots"])
 
         show_message(
-            f"Revolution Idle Sacrifice Automation started with {zodiac_count} zodiac slot(s). Press 'q' to stop.",
+            f"Revolution Idle Sacrifice Automation started with {zodiac_count} "
+            "zodiac slot(s). Press 'q' to stop.",
             level="info",
         )
 
@@ -89,14 +94,15 @@ class AutomationEngine:
         # Calculate and display total automation time
         total_time = self.performance_tracker.get_total_automation_time()
         show_message(
-            f"Revolution Idle Sacrifice Automation completed. Total time: {total_time:.2f} seconds.",
+            f"Revolution Idle Sacrifice Automation completed. "
+            f"Total time: {total_time:.2f} seconds.",
             level="info",
         )
         # Add a newline after the counter display when automation ends
         print()
         self.is_running = False
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the automation engine."""
         self.is_running = False
 
@@ -107,7 +113,8 @@ class AutomationEngine:
             k in target_rgbs for k in ["zodiac_slots", "sacrifice_button"]
         ):
             show_message(
-                "Revolution Idle Sacrifice Automation cannot start: Missing configuration data. Please run in 'setup' mode first.",
+                "Revolution Idle Sacrifice Automation cannot start: Missing "
+                "configuration data. Please run in 'setup' mode first.",
                 level="info",
             )
             return False
@@ -115,7 +122,8 @@ class AutomationEngine:
         # Verify we have at least one zodiac slot configured
         if not click_coords["zodiac_slots"] or not target_rgbs["zodiac_slots"]:
             show_message(
-                "Revolution Idle Sacrifice Automation cannot start: No zodiac slots configured. Please run in 'setup' mode first.",
+                "Revolution Idle Sacrifice Automation cannot start: No zodiac "
+                "slots configured. Please run in 'setup' mode first.",
                 level="info",
             )
             return False
@@ -123,7 +131,11 @@ class AutomationEngine:
         return True
 
     def _check_zodiac_slots(
-        self, zodiac_colors, target_colors, click_coords: Dict, target_rgbs: Dict
+        self,
+        zodiac_colors: List,
+        target_colors: List,
+        click_coords: Dict,
+        target_rgbs: Dict,
     ) -> bool:
         """
         Check each zodiac slot for color matches and perform actions if needed.
@@ -156,7 +168,7 @@ class AutomationEngine:
         slot_index: int,
         current_color: Tuple[int, int, int],
         target_color: Tuple[int, int, int],
-    ):
+    ) -> None:
         """Show detailed color matching debug information."""
         color_diff = [abs(c1 - c2) for c1, c2 in zip(current_color, target_color)]
         max_diff = max(color_diff)
@@ -204,17 +216,18 @@ class AutomationEngine:
                 level="debug",
             )
             return True
-        else:
-            show_message(
-                f"Color at Sacrifice Button ({current_sacrifice_color}) does NOT match "
-                f"target ({target_rgbs['sacrifice_button']}). Continuing to check other zodiac slots.",
-                level="debug",
-            )
-            return False
+
+        show_message(
+            f"Color at Sacrifice Button ({current_sacrifice_color}) does NOT match "
+            f"target ({target_rgbs['sacrifice_button']}). "
+            "Continuing to check other zodiac slots.",
+            level="debug",
+        )
+        return False
 
     def _drag_zodiac_to_sacrifice_box(
         self, from_coords: Tuple[int, int], to_coords: Tuple[int, int]
-    ):
+    ) -> None:
         """Perform drag action from zodiac slot to sacrifice box."""
         self.mouse.position = from_coords
         self.mouse.press(pynput.mouse.Button.left)
@@ -228,7 +241,7 @@ class AutomationEngine:
             level="debug",
         )
 
-    def _click_sacrifice_button(self, button_coords: Tuple[int, int]):
+    def _click_sacrifice_button(self, button_coords: Tuple[int, int]) -> None:
         """Click the sacrifice button."""
         self.mouse.position = button_coords
         self.mouse.click(pynput.mouse.Button.left)

@@ -82,7 +82,7 @@ def get_multiple_pixel_colors(
         screenshot = ImageGrab.grab(bbox=bbox)
 
         # Get colors for all coordinates
-        colors = []
+        colors: List[Optional[Tuple[int, int, int]]] = []
         for x, y in coordinates:
             # Adjust coordinates for the region
             region_x = x - bbox[0]

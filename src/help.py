@@ -8,7 +8,7 @@ functionality, configuration options, and usage instructions.
 from utils.display_utils import show_message
 
 
-def get_help_text():
+def get_help_text() -> str:
     """Returns the help text as a string for GUI use."""
     return """
     --- Revolution Idle Sacrifice Automation Script Help ---
@@ -104,7 +104,7 @@ def get_help_text():
     """
 
 
-def display_help():
+def display_help() -> None:
     """Displays information about the script and its configurable options."""
     help_message = get_help_text()
     show_message(help_message, level="info")

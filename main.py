@@ -14,7 +14,8 @@ How it works:
    If the sacrifice button's color does NOT match, it continues checking zodiac slots.
 
 Important Notes for Revolution Idle:
-- You can configure multiple zodiac slots (unlimited by default, or limited by MAX_ZODIAC_SLOTS) during setup.
+- You can configure multiple zodiac slots (unlimited by default, or limited by
+  MAX_ZODIAC_SLOTS) during setup.
   Each slot will have its color remembered for matching during automation.
 - For consistent automation, it is highly recommended to auto-sell other zodiac rarities or
   wait until you have a 100% chance for the desired zodiac type, as the script relies on
@@ -38,13 +39,14 @@ Repository: https://github.com/RLAlpha49/Revolution-Idle-Sacrifice-Automation
 import argparse
 import os
 import sys
+from typing import Any
 
 # Add the project root to Python path to enable imports
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
 
 
-def parse_arguments():
+def parse_arguments() -> Any:
     """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description="Revolution Idle Sacrifice Automation Script",
@@ -68,7 +70,7 @@ Examples:
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     """Main entry point for the Revolution Idle Sacrifice Automation Script."""
     args = parse_arguments()
 
@@ -84,8 +86,8 @@ def main():
                 )
 
                 print("Starting Revolution Idle Automation in GUI mode...")
-                app = RevolutionIdleGUI()
-                app.run()
+                gui_app = RevolutionIdleGUI()
+                gui_app.run()
 
             except ImportError as e:
                 print(f"Error: GUI mode requires additional dependencies: {e}")
@@ -101,8 +103,8 @@ def main():
             )
 
             print("Starting Revolution Idle Automation in CLI mode...")
-            app = RevolutionIdleApp()
-            app.run()
+            cli_app = RevolutionIdleApp()
+            cli_app.run()
 
     except KeyboardInterrupt:
         print("\n\nScript interrupted by user (Ctrl+C). Exiting...")

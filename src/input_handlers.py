@@ -5,9 +5,9 @@ This module handles mouse clicks during setup mode and keyboard presses
 during automation mode for the Revolution Idle automation script.
 """
 
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
-import pygetwindow as gw
+import pygetwindow as gw  # type: ignore
 import pynput.keyboard
 import pynput.mouse
 
@@ -19,13 +19,14 @@ from utils.display_utils import show_message
 class SetupState:
     """Manages the state during setup mode."""
 
-    def __init__(self):
-        self.current_step = "zodiac_slots"  # "zodiac_slots", "sacrifice_box", "sacrifice_button", "complete"
-        self.zodiac_slot_count = 0
-        self.click_coords = {}
-        self.target_rgbs = {}
+    def __init__(self) -> None:
+        # "zodiac_slots", "sacrifice_box", "sacrifice_button", "complete"
+        self.current_step: str = "zodiac_slots"
+        self.zodiac_slot_count: int = 0
+        self.click_coords: dict = {}
+        self.target_rgbs: dict = {}
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset setup state for a new setup session."""
         self.current_step = "zodiac_slots"
         self.zodiac_slot_count = 0
@@ -38,41 +39,47 @@ class MouseHandler:
 
     def __init__(
         self, setup_state: SetupState, on_setup_complete: Optional[Callable] = None
-    ):
+    ) -> None:
         self.setup_state = setup_state
         self.on_setup_complete = on_setup_complete
-        self.current_mode = None
+        self.current_mode: Optional[str] = None
 
         # GUI callback functions
-        self.gui_update_instructions = None
-        self.gui_log_message = None
+        self.gui_update_instructions: Optional[Callable[[str], None]] = None
+        self.gui_log_message: Optional[Callable[[str], None]] = None
 
         # Window detection settings
-        self.window_filtering_enabled = True
-        self.debug_mode = False
+        self.window_filtering_enabled: bool = True
+        self.debug_mode: bool = False
 
         # Debugging and filtering options
         self.debug_mode = False
         self.window_filtering_enabled = True
 
-    def set_gui_callbacks(self, update_instructions_callback, log_message_callback):
+    def set_gui_callbacks(
+        self,
+        update_instructions_callback: Callable[[str], None],
+        log_message_callback: Callable[[str], None],
+    ) -> None:
         """Set callback functions for GUI integration."""
         self.gui_update_instructions = update_instructions_callback
         self.gui_log_message = log_message_callback
 
-    def set_mode(self, mode: str):
+    def set_mode(self, mode: str) -> None:
         """Set the current operation mode."""
         self.current_mode = mode
 
-    def enable_debug_mode(self):
+    def enable_debug_mode(self) -> None:
         """Enable debug mode to show all window detection details."""
         self.debug_mode = True
 
-    def disable_window_filtering(self):
+    def disable_window_filtering(self) -> None:
         """Disable window filtering for compatibility with unusual setups."""
         self.window_filtering_enabled = False
 
-    def on_click(self, x: int, y: int, button: pynput.mouse.Button, pressed: bool):
+    def on_click(
+        self, x: int, y: int, button: pynput.mouse.Button, pressed: bool
+    ) -> None:
         """
         Callback function executed when a mouse button is pressed or released.
         Behavior depends on the current mode ('setup' or 'automation').
@@ -85,11 +92,12 @@ class MouseHandler:
             self._handle_setup_click(x, y, button)
         elif self.current_mode == "automation":
             show_message(
-                f"Click detected at: X={x}, Y={y}. In automation mode, clicks are performed by the script, not used for setup.",
+                f"Click detected at: X={x}, Y={y}. In automation mode, "
+                "clicks are performed by the script, not used for setup.",
                 level="debug",
             )
 
-    def _handle_setup_click(self, x: int, y: int, button: pynput.mouse.Button):
+    def _handle_setup_click(self, x: int, y: int, button: pynput.mouse.Button) -> None:
         """Handle mouse clicks during setup mode."""
         # Check if the click is on the Revolution Idle window (if filtering is enabled)
         if self.window_filtering_enabled and not self._is_click_on_revolution_idle(
@@ -118,7 +126,7 @@ class MouseHandler:
                 else:
                     show_message(right_click_message, level="info")
 
-    def _handle_zodiac_slot_click(self, x: int, y: int):
+    def _handle_zodiac_slot_click(self, x: int, y: int) -> None:
         """Handle clicks for zodiac slot setup."""
         # Initialize zodiac slots lists if not already done
         if "zodiac_slots" not in self.setup_state.click_coords:
@@ -176,7 +184,7 @@ class MouseHandler:
                     f"Maximum zodiac slots ({MAX_ZODIAC_SLOTS}) reached. Now left-click to set the Sacrifice Drag Box."
                 )
 
-    def _handle_sacrifice_box_click(self, x: int, y: int):
+    def _handle_sacrifice_box_click(self, x: int, y: int) -> None:
         """Handle clicks for sacrifice box setup."""
         self.setup_state.click_coords["sacrifice_box"] = (x, y)
 
@@ -195,7 +203,7 @@ class MouseHandler:
 
         self.setup_state.current_step = "sacrifice_button"
 
-    def _handle_sacrifice_button_click(self, x: int, y: int):
+    def _handle_sacrifice_button_click(self, x: int, y: int) -> None:
         """Handle clicks for sacrifice button setup."""
         # Hardcoded RGB for the Sacrifice Button (for reliability)
         sacrifice_button_rgb = (219, 124, 0)
@@ -223,7 +231,7 @@ class MouseHandler:
         if self.on_setup_complete:
             self.on_setup_complete()
 
-    def _finish_zodiac_slots(self):
+    def _finish_zodiac_slots(self) -> None:
         """Finish adding zodiac slots and proceed to sacrifice box."""
         message = f"Finished adding zodiac slots. {self.setup_state.zodiac_slot_count} zodiac slots configured."
         next_instructions = f"Zodiac slots configuration complete!\n\n{self.setup_state.zodiac_slot_count} zodiac slots have been configured.\n\nNow left-click to set the Sacrifice Drag Box."
@@ -331,15 +339,15 @@ class MouseHandler:
 class KeyboardHandler:
     """Handles keyboard events during automation mode."""
 
-    def __init__(self, on_stop_automation: Optional[Callable] = None):
+    def __init__(self, on_stop_automation: Optional[Callable] = None) -> None:
         self.on_stop_automation = on_stop_automation
-        self.stop_automation = False
+        self.stop_automation: bool = False
 
-    def reset_stop_flag(self):
+    def reset_stop_flag(self) -> None:
         """Reset the stop automation flag."""
         self.stop_automation = False
 
-    def on_press(self, key):
+    def on_press(self, key: Any) -> None:
         """
         Callback function executed when a keyboard key is pressed.
         Used to detect the configured STOP_KEY to stop the automation.

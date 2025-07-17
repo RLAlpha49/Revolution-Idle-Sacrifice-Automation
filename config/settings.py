@@ -15,7 +15,7 @@ from typing import Any, Dict
 class SettingsLoader:
     """Loads and manages user settings from external configuration file."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._settings: Dict[str, Any] = {}
         self._load_settings()
 
@@ -132,7 +132,8 @@ DELAY_AFTER_CLICK = _settings_loader.get(
 
 # Automation Exit Key
 # The keyboard key that will stop the automation. Default is 'q'.
-# Can be a single character (e.g., 'q', 'p') or a special key name (e.g., 'esc', 'f1', 'space', 'shift', 'ctrl').
+# Can be a single character (e.g., 'q', 'p') or a special key name
+# (e.g., 'esc', 'f1', 'space', 'shift', 'ctrl').
 # For a list of special key names, refer to pynput.keyboard.Key documentation.
 STOP_KEY = _settings_loader.get("stop_key")
 
@@ -162,7 +163,7 @@ MESSAGE_LEVEL = _settings_loader.get("message_level")  # Options: 'info', 'debug
 CONFIG_FILE = "revolution_idle_zodiac_automation_config.json"
 
 
-def reload_settings():
+def reload_settings() -> None:
     """Reload settings from file and update global variables."""
     # pylint: disable=global-statement
     global COLOR_TOLERANCE, DELAY_BEFORE_CHECK, DELAY_AFTER_PRESS, DELAY_DRAG_DURATION

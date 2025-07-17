@@ -8,9 +8,9 @@ when GUI mode is selected.
 
 import threading
 import time
-from typing import Optional
+from typing import Any, Optional
 
-import customtkinter as ctk
+import customtkinter as ctk  # type: ignore
 import pynput.keyboard
 import pynput.mouse
 
@@ -23,7 +23,7 @@ from src.setup_manager import SetupManager
 class RevolutionIdleGUI:
     """GUI application controller for Revolution Idle Sacrifice Automation."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Initialize core components
         self.config_manager = ConfigManager()
         self.automation_engine = AutomationEngine()
@@ -50,14 +50,14 @@ class RevolutionIdleGUI:
         self.window_detection_disabled = False
         self.disable_detection_button: Optional[ctk.CTkButton] = None
 
-    def run(self):
+    def run(self) -> None:
         """Initialize and run the GUI application."""
         self._create_gui()
         self._load_initial_config()
         if self.root:
             self.root.mainloop()
 
-    def _create_gui(self):
+    def _create_gui(self) -> None:
         """Create the main GUI window and components."""
         # Set appearance mode and color theme
         ctk.set_appearance_mode("dark")
@@ -147,7 +147,7 @@ class RevolutionIdleGUI:
         # Log initial message
         self._log_message("Welcome to Revolution Idle Sacrifice Automation!")
 
-    def _load_initial_config(self):
+    def _load_initial_config(self) -> None:
         """Load configuration at startup."""
         if self.config_manager.load_config():
             from config.settings import (  # pylint: disable=import-outside-toplevel
@@ -162,12 +162,12 @@ class RevolutionIdleGUI:
 
         self._update_button_states()
 
-    def _update_status(self, message: str):
+    def _update_status(self, message: str) -> None:
         """Update the status label."""
         if self.status_label:
             self.status_label.configure(text=message)
 
-    def _log_message(self, message: str):
+    def _log_message(self, message: str) -> None:
         """Add a message to the log textbox."""
         if self.log_textbox:
             timestamp = time.strftime("%H:%M:%S")
@@ -175,7 +175,7 @@ class RevolutionIdleGUI:
             self.log_textbox.insert("end", formatted_message)
             self.log_textbox.see("end")
 
-    def _update_button_states(self):
+    def _update_button_states(self) -> None:
         """Update button states based on current configuration and automation status."""
         has_config = self.config_manager.validate_config()
 
@@ -200,7 +200,7 @@ class RevolutionIdleGUI:
             else:
                 self.setup_button.configure(text="Setup Mode", state="normal")
 
-    def _on_setup_click(self):
+    def _on_setup_click(self) -> None:
         """Handle setup button click."""
         if self.setup_in_progress:
             return
@@ -226,7 +226,7 @@ class RevolutionIdleGUI:
         setup_thread.daemon = True
         setup_thread.start()
 
-    def _run_setup_thread(self):
+    def _run_setup_thread(self) -> None:
         """Run setup mode in a separate thread."""
         try:
             # Start input listeners for setup
@@ -248,7 +248,7 @@ class RevolutionIdleGUI:
             # Stop listeners
             self._stop_listeners()
 
-    def _start_listeners(self):
+    def _start_listeners(self) -> None:
         """Start mouse and keyboard listeners."""
         mouse_handler = self.setup_manager.get_mouse_handler()
         self.mouse_listener = pynput.mouse.Listener(on_click=mouse_handler.on_click)
@@ -259,7 +259,37 @@ class RevolutionIdleGUI:
         self.mouse_listener.start()
         self.keyboard_listener.start()
 
-    def _stop_listeners(self):
+    def _start_automation_keyboard_listener(self) -> None:
+        """Start keyboard listener specifically for automation mode."""
+        # Reset the stop flag before starting
+        self.keyboard_handler.reset_stop_flag()
+
+        # Stop any existing listener first
+        if self.keyboard_listener:
+            try:
+                self.keyboard_listener.stop()
+                self.keyboard_listener.join()
+            except Exception:  # pylint: disable=broad-except
+                pass  # Ignore errors when stopping existing listener
+
+        # Start new keyboard listener
+        self.keyboard_listener = pynput.keyboard.Listener(
+            on_press=self.keyboard_handler.on_press
+        )
+        self.keyboard_listener.start()
+
+    def _stop_automation_keyboard_listener(self) -> None:
+        """Stop keyboard listener for automation mode."""
+        if self.keyboard_listener:
+            try:
+                self.keyboard_listener.stop()
+                self.keyboard_listener.join()
+            except Exception:  # pylint: disable=broad-except
+                pass  # Ignore errors when stopping listener
+            finally:
+                self.keyboard_listener = None
+
+    def _stop_listeners(self) -> None:
         """Stop mouse and keyboard listeners."""
         if self.mouse_listener:
             self.mouse_listener.stop()
@@ -269,7 +299,7 @@ class RevolutionIdleGUI:
             self.keyboard_listener.stop()
             self.keyboard_listener.join()
 
-    def _on_setup_complete(self):
+    def _on_setup_complete(self) -> None:
         """Handle setup completion."""
         self.setup_in_progress = False
         self._update_button_states()
@@ -279,21 +309,24 @@ class RevolutionIdleGUI:
         # Update instructions window instead of closing it
         if self.instructions_window and self.instructions_label:
             self.instructions_label.configure(
-                text="Setup Complete!\n\nAll components have been configured successfully. The configuration has been saved.\n\nYou can now close this window and start automation."
+                text="Setup Complete!\n\n"
+                "All components have been configured successfully. "
+                "The configuration has been saved.\n\n"
+                "You can now close this window and start automation."
             )
 
         # Reload configuration
         if self.config_manager.load_config():
             self._log_message("Configuration reloaded.")
 
-    def _on_setup_error(self, error_msg: str):
+    def _on_setup_error(self, error_msg: str) -> None:
         """Handle setup errors."""
         self.setup_in_progress = False
         self._update_button_states()
         self._update_status("Setup failed")
         self._log_message(f"Setup mode failed: {error_msg}")
 
-    def _on_setup_cancelled(self):
+    def _on_setup_cancelled(self) -> None:
         """Handle setup cancellation."""
         self.setup_in_progress = False
         self._update_button_states()
@@ -310,14 +343,14 @@ class RevolutionIdleGUI:
             self.instructions_label = None
             self.disable_detection_button = None
 
-    def _on_automation_click(self):
+    def _on_automation_click(self) -> None:
         """Handle automation button click."""
         if self.is_automation_running:
             self._stop_automation()
         else:
             self._start_automation()
 
-    def _start_automation(self):
+    def _start_automation(self) -> None:
         """Start the automation process."""
         if not self.config_manager.validate_config():
             self._log_message(
@@ -332,16 +365,19 @@ class RevolutionIdleGUI:
         self._log_message("Starting automation...")
         self._log_message("Press 'q' to stop automation at any time.")
 
+        # Start keyboard listener for stop key detection during automation
+        self._start_automation_keyboard_listener()
+
         # Run automation in a separate thread
         self.automation_thread = threading.Thread(target=self._run_automation_thread)
         self.automation_thread.daemon = True
         self.automation_thread.start()
 
-    def _run_automation_thread(self):
+    def _run_automation_thread(self) -> None:
         """Run automation in a separate thread."""
         try:
             # Create a stop callback that checks our flag
-            def stop_callback():
+            def stop_callback() -> bool:
                 return not self.is_automation_running
 
             self.automation_engine.run_automation(
@@ -358,35 +394,48 @@ class RevolutionIdleGUI:
             if self.root:
                 self.root.after(0, self._on_automation_stopped)
 
-    def _stop_automation(self):
+    def _stop_automation(self) -> None:
         """Stop the automation process."""
         self.is_automation_running = False
         self.automation_engine.stop()
+        self._stop_automation_keyboard_listener()
         self._log_message("Stopping automation...")
 
-    def _on_stop_automation(self):
-        """Callback when automation should be stopped."""
-        self.automation_engine.stop()
+    def _on_stop_automation(self) -> None:
+        """Callback when automation should be stopped via keyboard."""
+        if self.is_automation_running:
+            self.is_automation_running = False
+            self.automation_engine.stop()
+            # Schedule GUI updates on the main thread
+            if self.root:
+                self.root.after(0, self._on_keyboard_stop_automation)
 
-    def _on_automation_stopped(self):
+    def _on_keyboard_stop_automation(self) -> None:
+        """Handle automation stopping via keyboard on the main GUI thread."""
+        self._stop_automation_keyboard_listener()
+        self._update_button_states()
+        self._update_status("Automation stopped")
+
+    def _on_automation_stopped(self) -> None:
         """Handle automation stopping."""
         self.is_automation_running = False
+        self._stop_automation_keyboard_listener()
         self._update_button_states()
         self._update_status("Automation stopped")
         self._log_message("Automation stopped.")
 
-    def _on_automation_error(self, error_msg: str):
+    def _on_automation_error(self, error_msg: str) -> None:
         """Handle automation errors."""
         self.is_automation_running = False
         self._update_button_states()
         self._update_status("Automation error")
         self._log_message(f"Automation error: {error_msg}")
 
-    def _on_help_click(self):
+    def _on_help_click(self) -> None:
         """Handle help button click."""
         self._show_help_window()
 
-    def _show_help_window(self):
+    def _show_help_window(self) -> None:
         """Show help information in a new window."""
         help_window = ctk.CTkToplevel(self.root)
         help_window.title("Help - Revolution Idle Sacrifice Automation")
@@ -455,7 +504,7 @@ class RevolutionIdleGUI:
         github_button = ctk.CTkButton(
             button_frame,
             text=">> View on GitHub",
-            command=lambda: self._open_github_repo(),
+            command=self._open_github_repo,
             width=140,
             fg_color=("#2b2b2b", "#404040"),
             hover_color=("#404040", "#555555"),
@@ -466,7 +515,7 @@ class RevolutionIdleGUI:
         settings_button = ctk.CTkButton(
             button_frame,
             text="Edit Settings",
-            command=lambda: self._open_settings_file(),
+            command=self._open_settings_file,
             width=140,
             fg_color=("#1f538d", "#4a9eff"),
         )
@@ -483,7 +532,7 @@ class RevolutionIdleGUI:
         )
         close_button.grid(row=0, column=2, padx=5, pady=5)
 
-    def _on_settings_click(self):
+    def _on_settings_click(self) -> None:
         """Handle settings button click."""
         try:
             from config.settings import (  # pylint: disable=import-outside-toplevel
@@ -500,7 +549,7 @@ class RevolutionIdleGUI:
             self._log_message(f"Failed to reload settings: {e}")
             self._update_status("Settings reload failed")
 
-    def _show_setup_instructions(self):
+    def _show_setup_instructions(self) -> None:
         """Show setup instructions in a dedicated window."""
         if self.instructions_window:
             self.instructions_window.destroy()
@@ -512,7 +561,7 @@ class RevolutionIdleGUI:
         self.instructions_window.attributes("-topmost", True)
 
         # Make window stay open independently after a short delay
-        def make_independent():
+        def make_independent() -> None:
             if self.instructions_window:
                 self.instructions_window.transient(None)
 
@@ -577,12 +626,12 @@ class RevolutionIdleGUI:
         )
         close_button.grid(row=0, column=2, padx=5, pady=10)
 
-    def _update_setup_instructions(self, message: str):
+    def _update_setup_instructions(self, message: str) -> None:
         """Update the setup instructions display."""
         if self.instructions_label:
             self.instructions_label.configure(text=message)
 
-    def _cancel_setup(self):
+    def _cancel_setup(self) -> None:
         """Cancel the setup process."""
         if self.instructions_window:
             self.instructions_window.destroy()
@@ -600,7 +649,7 @@ class RevolutionIdleGUI:
         self._log_message("Setup mode cancelled by user.")
         self._stop_listeners()
 
-    def _disable_window_detection(self):
+    def _disable_window_detection(self) -> None:
         """Disable window detection for the current setup session."""
         if self.window_detection_disabled:
             return  # Already disabled, do nothing
@@ -616,13 +665,17 @@ class RevolutionIdleGUI:
                 )
 
             self._log_message(
-                "Window detection disabled. All clicks will now be registered regardless of window."
+                "Window detection disabled. All clicks will now be registered "
+                "regardless of window."
             )
             self._update_setup_instructions(
-                "Window detection disabled!\n\nAll clicks will now be registered regardless of which window you click on.\n\nPlease continue with the setup process."
+                "Window detection disabled!\n\n"
+                "All clicks will now be registered regardless of which window "
+                "you click on.\n\n"
+                "Please continue with the setup process."
             )
 
-    def _close_instructions_window(self):
+    def _close_instructions_window(self) -> None:
         """Close the instructions window manually."""
         if self.instructions_window:
             self.instructions_window.destroy()
@@ -634,7 +687,7 @@ class RevolutionIdleGUI:
         # Reset window detection state when closing instructions
         self.window_detection_disabled = False
 
-    def _create_overview_tab(self, parent):
+    def _create_overview_tab(self, parent: Any) -> None:
         """Create the overview tab content."""
         # Create scrollable frame
         scrollable_frame = ctk.CTkScrollableFrame(parent, width=800, height=400)
@@ -693,7 +746,7 @@ class RevolutionIdleGUI:
         features_label = ctk.CTkLabel(features_frame, text="", height=10)
         features_label.pack()
 
-    def _create_setup_tab(self, parent):
+    def _create_setup_tab(self, parent: Any) -> None:
         """Create the setup tab content."""
         scrollable_frame = ctk.CTkScrollableFrame(parent, width=800, height=400)
         scrollable_frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -754,7 +807,7 @@ class RevolutionIdleGUI:
         notes_spacer = ctk.CTkLabel(notes_frame, text="", height=10)
         notes_spacer.pack()
 
-    def _create_automation_tab(self, parent):
+    def _create_automation_tab(self, parent: Any) -> None:
         """Create the automation tab content."""
         scrollable_frame = ctk.CTkScrollableFrame(parent, width=800, height=400)
         scrollable_frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -814,7 +867,7 @@ class RevolutionIdleGUI:
         controls_spacer = ctk.CTkLabel(controls_frame, text="", height=10)
         controls_spacer.pack()
 
-    def _create_settings_tab(self, parent):
+    def _create_settings_tab(self, parent: Any) -> None:
         """Create the settings tab content."""
         scrollable_frame = ctk.CTkScrollableFrame(parent, width=800, height=400)
         scrollable_frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -895,7 +948,7 @@ class RevolutionIdleGUI:
             cat_spacer = ctk.CTkLabel(cat_frame, text="", height=5)
             cat_spacer.pack()
 
-    def _create_performance_tab(self, parent):
+    def _create_performance_tab(self, parent: Any) -> None:
         """Create the performance tab content."""
         scrollable_frame = ctk.CTkScrollableFrame(parent, width=800, height=400)
         scrollable_frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -954,7 +1007,7 @@ class RevolutionIdleGUI:
         tips_spacer = ctk.CTkLabel(tips_frame, text="", height=10)
         tips_spacer.pack()
 
-    def _open_github_repo(self):
+    def _open_github_repo(self) -> None:
         """Open the GitHub repository in the default browser."""
         import webbrowser  # pylint: disable=import-outside-toplevel
 
@@ -963,7 +1016,7 @@ class RevolutionIdleGUI:
         )
         self._log_message("Opened GitHub repository in browser.")
 
-    def _open_settings_file(self):
+    def _open_settings_file(self) -> None:
         """Open the settings file in the default editor."""
         import os  # pylint: disable=import-outside-toplevel
         import platform  # pylint: disable=import-outside-toplevel

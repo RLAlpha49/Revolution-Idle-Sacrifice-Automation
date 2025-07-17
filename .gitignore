@@ -1,3 +1,6 @@
 __pycache__/
+.mypy_cache/
+.ruff_cache/
+.vscode/
 revolution_idle_zodiac_automation_config.json
 user_settings.json

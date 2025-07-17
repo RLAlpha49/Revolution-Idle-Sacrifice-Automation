@@ -6,6 +6,7 @@ zodiac slots, sacrifice box, and sacrifice button coordinates and colors.
 """
 
 import time
+from typing import Callable, Optional
 
 from config.settings import MAX_ZODIAC_SLOTS
 from src.input_handlers import MouseHandler, SetupState
@@ -15,18 +16,22 @@ from utils.display_utils import show_message
 class SetupManager:
     """Manages the setup process for configuring automation coordinates and colors."""
 
-    def __init__(self, config_manager):
+    def __init__(self, config_manager) -> None:
         self.config_manager = config_manager
         self.setup_state = SetupState()
         self.mouse_handler = MouseHandler(self.setup_state, self._on_setup_complete)
-        self.setup_complete = False
-        self.setup_cancelled = False
+        self.setup_complete: bool = False
+        self.setup_cancelled: bool = False
 
         # GUI callback functions
-        self.gui_update_instructions = None
-        self.gui_log_message = None
+        self.gui_update_instructions: Optional[Callable[[str], None]] = None
+        self.gui_log_message: Optional[Callable[[str], None]] = None
 
-    def set_gui_callbacks(self, update_instructions_callback, log_message_callback):
+    def set_gui_callbacks(
+        self,
+        update_instructions_callback: Callable[[str], None],
+        log_message_callback: Callable[[str], None],
+    ) -> None:
         """Set callback functions for GUI integration."""
         self.gui_update_instructions = update_instructions_callback
         self.gui_log_message = log_message_callback
@@ -36,12 +41,12 @@ class SetupManager:
             update_instructions_callback, log_message_callback
         )
 
-    def cancel_setup(self):
+    def cancel_setup(self) -> None:
         """Cancel the setup process."""
         self.setup_cancelled = True
         self.setup_complete = True  # This will exit the setup loop
 
-    def run_setup_mode(self):
+    def run_setup_mode(self) -> None:
         """Handle the interactive setup process for multiple zodiac slots."""
         # Reset for a new setup session
         self.setup_state.reset()
@@ -60,7 +65,7 @@ class SetupManager:
         if not self.setup_cancelled and not self.gui_log_message:
             show_message("Setup mode completed. Returning to main menu.", level="info")
 
-    def _display_setup_instructions(self):
+    def _display_setup_instructions(self) -> None:
         """Display instructions for the setup process."""
         if self.gui_update_instructions:
             # GUI mode - show instructions in the GUI window
@@ -139,7 +144,7 @@ class SetupManager:
                 "Ready to capture Zodiac Slot 1. Left-click on the first zodiac slot in the exact 'Revolution Idle' game window."
             )
 
-    def _on_setup_complete(self):
+    def _on_setup_complete(self) -> None:
         """Callback when setup is completed."""
         if self.setup_cancelled:
             if self.gui_log_message:
@@ -166,6 +171,6 @@ class SetupManager:
 
         self.setup_complete = True
 
-    def get_mouse_handler(self):
+    def get_mouse_handler(self) -> MouseHandler:
         """Get the mouse handler for listener registration."""
         return self.mouse_handler
