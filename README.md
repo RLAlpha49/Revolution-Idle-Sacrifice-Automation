@@ -12,7 +12,7 @@ This script automates the zodiac sacrificing process in the game **Revolution Id
 - **Two Operation Modes:**
   - **Setup Mode:** Configure on-screen locations (coordinates) and colors for your specific computer and game resolution.
   - **Automation Mode:** Runs the automated sacrificing process using your saved configuration.
-- **Configurable Settings:** Adjust delays, stop key, slot limits, and message verbosity through an external settings file
+- **Configurable Settings:** Adjust delays, stop key, slot limits, and message verbosity through an external settings file or the built-in settings editor
 - **Persistent Configuration:** Saves settings to `revolution_idle_zodiac_automation_config.json` for reuse
 - **User Settings File:** Customize script behavior via `user_settings.json` (works with compiled executables)
 - **Flexible Stop Key:** Use a character or special key (e.g., `esc`, `space`, `ctrl`) to stop automation
@@ -67,6 +67,7 @@ The script follows this logic:
 You can choose between CLI and GUI modes:
 
 **CLI Mode (Traditional):**
+
 ```sh
 python main.py --cli
 # or simply
@@ -74,18 +75,21 @@ python main.py
 ```
 
 **GUI Mode (Modern Interface):**
+
 ```sh
 python main.py --gui
 ```
 
 **Help:**
+
 ```sh
 python main.py --help
 ```
 
 ### CLI Mode
 
-1. **Run CLI Mode:**  
+1. **Run CLI Mode:**
+
    ```sh
    python main.py --cli
    ```
@@ -103,7 +107,8 @@ python main.py --help
 
 ### GUI Mode
 
-1. **Run GUI Mode:**  
+1. **Run GUI Mode:**
+
    ```sh
    python main.py --gui
    ```
@@ -112,6 +117,7 @@ python main.py --help
    - **Setup Mode:** Click the "Setup Mode" button to configure click points and colors
    - **Start/Stop Automation:** Click the "Start Automation" button to begin/stop automation
    - **Help:** Click the "Help" button to view detailed instructions
+   - **Settings:** Click the "Settings" button to open the settings editor
    - **Reload Settings:** Click "Reload Settings" to refresh settings from `user_settings.json`
    - **Activity Log:** Monitor real-time activity and status updates
 
@@ -139,6 +145,14 @@ Settings are managed through an external `user_settings.json` file that is autom
 ### Settings File
 
 The `user_settings.json` file contains all configurable options with helpful comments. You can modify this file with any text editor and either restart the script or use the "Reload Settings" option in the main menu.
+
+### Settings Editor (GUI Mode)
+
+In GUI mode, you can click the "Settings" button to open a user-friendly settings editor that allows you to:
+
+- Adjust all settings with appropriate controls (sliders, switches, dropdowns)
+- See descriptions of each setting
+- Save changes directly without editing JSON files manually
 
 For detailed information about all available settings, see [SETTINGS_GUIDE.md](SETTINGS_GUIDE.md).
 

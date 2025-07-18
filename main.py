@@ -47,7 +47,7 @@ project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
 
 
-def setup_logging() -> None:
+def setup_logging(debug: bool = False) -> None:
     """Configure logging for the application."""
     # Create logs directory if it doesn't exist
     logs_dir = os.path.join(project_root, "logs")
@@ -56,8 +56,11 @@ def setup_logging() -> None:
     # Configure logging
     log_file = os.path.join(logs_dir, "revolution_idle_automation.log")
 
+    # Set log level based on debug flag
+    log_level = logging.DEBUG if debug else logging.INFO
+
     logging.basicConfig(
-        level=logging.INFO,
+        level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[logging.FileHandler(log_file), logging.StreamHandler(sys.stdout)],
     )
@@ -66,6 +69,8 @@ def setup_logging() -> None:
     # logging.getLogger("some_module").setLevel(logging.DEBUG)
 
     logging.info("Logging initialized")
+    if debug:
+        logging.debug("Debug logging enabled")
 
 
 def parse_arguments() -> Any:
@@ -78,6 +83,7 @@ Examples:
   python main.py               # Run in CLI mode (default)
   python main.py --cli         # Run in CLI mode (explicit)
   python main.py --gui         # Run in GUI mode
+  python main.py --gui --debug # Run in GUI mode with debug logging
         """,
     )
 
@@ -89,16 +95,18 @@ Examples:
         "--gui", action="store_true", help="Run in GUI mode using CustomTkinter"
     )
 
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+
     return parser.parse_args()
 
 
 def main() -> None:
     """Main entry point for the Revolution Idle Sacrifice Automation Script."""
-    # Set up logging
-    setup_logging()
-
     # Parse arguments
     args = parse_arguments()
+
+    # Set up logging with debug flag
+    setup_logging(args.debug)
 
     # Default to CLI mode if no mode specified
     use_gui = args.gui

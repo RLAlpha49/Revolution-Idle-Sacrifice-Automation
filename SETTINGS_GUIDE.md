@@ -21,6 +21,24 @@ When you run the script for the first time, it will automatically create a `user
 
 ### How to Modify Settings
 
+#### Using the Settings Editor (GUI Mode)
+
+The easiest way to modify settings is through the built-in settings editor in GUI mode:
+
+1. **Launch the application in GUI mode**: `python main.py --gui`
+2. **Click the "Settings" button** in the main interface
+3. **Adjust settings** using the intuitive controls:
+   - Sliders for numeric values
+   - Switches for boolean values
+   - Dropdown menus for options
+   - Text fields for strings
+4. **Click "Save Settings"** to apply your changes
+5. The settings will be automatically saved and reloaded
+
+#### Manually Editing the Settings File
+
+You can also edit the settings file directly:
+
 1. **Locate the settings file**: Look for `user_settings.json` in the same directory as your script/executable
 2. **Edit the file**: Open it with any text editor (Notepad, VS Code, etc.)
 3. **Modify values**: Change the values for the settings you want to customize

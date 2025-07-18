@@ -81,9 +81,13 @@ class HelpWindow:
             button_frame = ctk.CTkFrame(main_frame)
             button_frame.pack(fill="x", pady=(20, 0))
 
+            # Add internal padding to the button frame
+            button_container = ctk.CTkFrame(button_frame, fg_color="transparent")
+            button_container.pack(fill="x", expand=True, padx=10, pady=(15, 15))
+
             # Create buttons
             github_button = ctk.CTkButton(
-                button_frame,
+                button_container,
                 text="GitHub Repository",
                 command=self._open_github_repo,
                 width=150,
@@ -91,7 +95,7 @@ class HelpWindow:
             github_button.pack(side="left", padx=10)
 
             settings_file_button = ctk.CTkButton(
-                button_frame,
+                button_container,
                 text="Open Settings File",
                 command=self._open_settings_file,
                 width=150,
@@ -99,7 +103,7 @@ class HelpWindow:
             settings_file_button.pack(side="left", padx=10)
 
             close_button = ctk.CTkButton(
-                button_frame,
+                button_container,
                 text="Close",
                 command=self.window.destroy,
                 width=100,

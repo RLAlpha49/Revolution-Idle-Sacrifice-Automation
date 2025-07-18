@@ -10,6 +10,9 @@ import logging
 import threading
 import time
 from typing import Optional
+import os
+import sys
+import json
 
 import customtkinter as ctk  # type: ignore
 import pynput.keyboard
@@ -19,6 +22,7 @@ from config.config_manager import ConfigManager
 from config.settings import STOP_KEY
 from src.automation_engine import AutomationEngine
 from src.gui.help_window import HelpWindow
+from src.gui.settings_window import SettingsWindow
 from src.gui.setup_window import SetupInstructionsWindow
 from src.gui.utils import log_message
 from src.input_handlers import KeyboardHandler
@@ -54,12 +58,61 @@ class RevolutionIdleGUI:
 
         # Windows
         self.setup_window: Optional[SetupInstructionsWindow] = None
+        self.settings_window: Optional[SettingsWindow] = None
 
         # State management
         self.automation_thread: Optional[threading.Thread] = None
         self.is_automation_running = False
         self.setup_in_progress = False
         self.window_detection_disabled = False
+
+        # Get GUI scale factor from settings
+        self.gui_scale = self._get_gui_scale_factor()
+
+    def _get_gui_scale_factor(self) -> float:
+        """Get the GUI scale factor from settings."""
+        try:
+            # Try to load from user_settings.json
+            settings_file = self._get_settings_file_path()
+
+            if os.path.exists(settings_file):
+                with open(settings_file, "r", encoding="utf-8") as f:
+                    settings = json.load(f)
+
+                    if "gui_scale" in settings:
+                        scale = settings["gui_scale"]
+                        # Ensure scale is within reasonable bounds
+                        if 0.5 <= scale <= 2.0:
+                            return float(scale)
+
+                        logger.warning(
+                            "GUI scale out of bounds: %s, using default 1.0", scale
+                        )
+                    else:
+                        logger.debug("No gui_scale found in settings")
+            else:
+                logger.debug("Settings file not found: %s", settings_file)
+
+            logger.info("Using default GUI scale factor: 1.0")
+            return 1.0  # Default scale
+        except (json.JSONDecodeError, IOError, TypeError, ValueError) as e:
+            logger.error("Error loading GUI scale: %s", e, exc_info=True)
+            return 1.0  # Default scale on error
+
+    def _get_settings_file_path(self) -> str:
+        """Get the path to the user settings file."""
+        # Get the directory where the script is running from
+        if hasattr(sys, "_MEIPASS"):
+            # Running as compiled executable
+            base_dir = os.path.dirname(sys.executable)
+        else:
+            # Running as script
+            base_dir = os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            )
+
+        path = os.path.join(base_dir, "user_settings.json")
+        return path
 
     def run(self) -> None:
         """Initialize and run the GUI application."""
@@ -77,83 +130,245 @@ class RevolutionIdleGUI:
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
 
+        # Apply scaling factor
+        ctk.set_widget_scaling(self.gui_scale)
+
+        logger.info("Applied GUI scale factor: %s", self.gui_scale)
+
         # Create main window
         self.root = ctk.CTk()
         self.root.title("Revolution Idle Sacrifice Automation")
-        self.root.geometry("800x600")
-        self.root.minsize(600, 500)
+        self.root.geometry("800x600")  # Smaller default size
+        self.root.minsize(600, 450)  # Smaller minimum size
 
-        # Configure grid weights
+        # Configure grid weights for responsive layout
         self.root.grid_rowconfigure(1, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
 
-        # Create main frame
-        main_frame = ctk.CTkFrame(self.root)
-        main_frame.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 10))
-        main_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
+        # Create header frame
+        header_frame = ctk.CTkFrame(self.root, fg_color="transparent")
+        header_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 0))
+        header_frame.grid_columnconfigure(0, weight=1)
 
-        # Title label
-        title_label = ctk.CTkLabel(
-            main_frame,
-            text="Revolution Idle Sacrifice Automation",
-            font=ctk.CTkFont(size=20, weight="bold"),
-        )
-        title_label.grid(row=0, column=0, columnspan=4, pady=(20, 10))
+        # Title and logo frame
+        title_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+        title_frame.grid(row=0, column=0, sticky="ew")
+        title_frame.grid_columnconfigure(1, weight=1)
 
-        # Status label
-        self.status_label = ctk.CTkLabel(
-            main_frame, text="Ready", font=ctk.CTkFont(size=14)
-        )
-        self.status_label.grid(row=1, column=0, columnspan=4, pady=(0, 20))
-
-        # Control buttons
-        self.setup_button = ctk.CTkButton(
-            main_frame,
-            text="Setup Mode",
-            command=self._on_setup_click,
-            width=150,
+        # App icon/logo (placeholder - you can replace with an actual logo)
+        logo_label = ctk.CTkLabel(
+            title_frame,
+            text="⚡",  # Unicode lightning bolt as placeholder
+            font=ctk.CTkFont(size=28),
+            width=40,
             height=40,
         )
-        self.setup_button.grid(row=2, column=0, padx=10, pady=10)
+        logo_label.grid(row=0, column=0, padx=(0, 5), pady=5)
 
+        # Title label with subtitle in a responsive container
+        title_container = ctk.CTkFrame(title_frame, fg_color="transparent")
+        title_container.grid(row=0, column=1, sticky="w")
+
+        title_label = ctk.CTkLabel(
+            title_container,
+            text="Revolution Idle Automation",  # Shortened title
+            font=ctk.CTkFont(size=20, weight="bold"),
+            anchor="w",
+        )
+        title_label.pack(anchor="w")
+
+        subtitle_label = ctk.CTkLabel(
+            title_container,
+            text="Automate zodiac sacrificing",  # Shortened subtitle
+            font=ctk.CTkFont(size=12),
+            text_color=("gray70", "gray45"),
+            anchor="w",
+        )
+        subtitle_label.pack(anchor="w")
+
+        # Status indicator
+        status_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+        status_frame.grid(row=1, column=0, sticky="ew", pady=(0, 10))
+        status_frame.grid_columnconfigure(1, weight=1)
+
+        status_indicator = ctk.CTkLabel(
+            status_frame,
+            text="●",
+            font=ctk.CTkFont(size=16),
+            text_color=("gray60", "gray60"),
+            width=15,
+        )
+        status_indicator.grid(row=0, column=0, padx=(0, 3))
+
+        self.status_label = ctk.CTkLabel(
+            status_frame,
+            text="Ready",
+            font=ctk.CTkFont(size=12),
+            anchor="w",
+        )
+        self.status_label.grid(row=0, column=1, sticky="w")
+
+        # Main content frame with sidebar and main area - using responsive weights
+        content_frame = ctk.CTkFrame(self.root)
+        content_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=10)
+        content_frame.grid_rowconfigure(0, weight=1)
+        content_frame.grid_columnconfigure(0, weight=0)  # Sidebar doesn't grow
+        content_frame.grid_columnconfigure(1, weight=1)  # Main area grows
+
+        # Sidebar for buttons - fixed width but with responsive content
+        sidebar_frame = ctk.CTkFrame(content_frame)
+        sidebar_frame.grid(row=0, column=0, sticky="ns", padx=(0, 10), pady=0)
+        sidebar_frame.grid_rowconfigure(4, weight=1)  # Push buttons to top
+
+        # Dynamic button sizing
+        button_width = 140  # Smaller buttons
+        button_height = 35
+
+        # Automation section (at the top, most prominent)
+        automation_section = ctk.CTkFrame(
+            sidebar_frame, fg_color=("gray90", "gray20"), corner_radius=8
+        )
+        automation_section.pack(fill="x", padx=5, pady=(0, 10), ipadx=5, ipady=5)
+
+        # Automation header
+        automation_header = ctk.CTkFrame(automation_section, fg_color="transparent")
+        automation_header.pack(fill="x", padx=5, pady=(5, 3))
+
+        # Automation icon and label
+        auto_icon = ctk.CTkLabel(
+            automation_header,
+            text="🚀",  # Rocket emoji
+            font=ctk.CTkFont(size=16),
+        )
+        auto_icon.pack(side="left", padx=(0, 3))
+
+        auto_label = ctk.CTkLabel(
+            automation_header,
+            text="Automation",  # Shortened label
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        auto_label.pack(side="left")
+
+        # Prominent automation button
         self.automation_button = ctk.CTkButton(
-            main_frame,
+            automation_section,
             text="Start Automation",
             command=self._on_automation_click,
-            width=150,
-            height=40,
+            width=button_width,
+            height=button_height + 5,
+            font=ctk.CTkFont(size=13, weight="bold"),
+            fg_color=("green", "green"),
+            hover_color=(
+                "#009000",
+                "#009000",
+            ),  # Slightly darker green for subtle hover effect
+            corner_radius=6,
         )
-        self.automation_button.grid(row=2, column=1, padx=10, pady=10)
+        self.automation_button.pack(padx=5, pady=(0, 5), fill="x")
 
-        help_button = ctk.CTkButton(
-            main_frame, text="Help", command=self._on_help_click, width=150, height=40
+        # Divider
+        divider = ctk.CTkFrame(sidebar_frame, height=1, fg_color=("gray80", "gray30"))
+        divider.pack(fill="x", padx=10, pady=(0, 5))
+
+        # Configuration section container - using pack for better dynamic sizing
+        config_section = ctk.CTkFrame(sidebar_frame, fg_color="transparent")
+        config_section.pack(fill="x", expand=False, padx=5)
+
+        # Other controls section header
+        controls_label = ctk.CTkLabel(
+            config_section,
+            text="CONFIGURATION",
+            font=ctk.CTkFont(size=11),
+            text_color=("gray60", "gray60"),
+            anchor="w",
         )
-        help_button.grid(row=2, column=2, padx=10, pady=10)
+        controls_label.pack(anchor="w", padx=5, pady=(0, 3))
+
+        # Control buttons in sidebar
+        self.setup_button = ctk.CTkButton(
+            config_section,
+            text="Setup Mode",
+            command=self._on_setup_click,
+            width=button_width,
+            height=button_height,
+            font=ctk.CTkFont(size=12),
+            corner_radius=6,
+        )
+        self.setup_button.pack(fill="x", padx=5, pady=3)
 
         settings_button = ctk.CTkButton(
-            main_frame,
-            text="Reload Settings",
+            config_section,
+            text="Settings",
             command=self._on_settings_click,
-            width=150,
-            height=40,
+            width=button_width,
+            height=button_height,
+            font=ctk.CTkFont(size=12),
+            corner_radius=6,
         )
-        settings_button.grid(row=2, column=3, padx=10, pady=10)
+        settings_button.pack(fill="x", padx=5, pady=3)
 
-        # Log frame
-        log_frame = ctk.CTkFrame(self.root)
-        log_frame.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
+        # Help section - using pack for better dynamic sizing
+        help_section = ctk.CTkFrame(sidebar_frame, fg_color="transparent")
+        help_section.pack(fill="x", expand=False, padx=5, pady=(10, 0))
+
+        help_label = ctk.CTkLabel(
+            help_section,
+            text="HELP & SUPPORT",
+            font=ctk.CTkFont(size=11),
+            text_color=("gray60", "gray60"),
+            anchor="w",
+        )
+        help_label.pack(anchor="w", padx=5, pady=(0, 3))
+
+        help_button = ctk.CTkButton(
+            help_section,
+            text="Help",
+            command=self._on_help_click,
+            width=button_width,
+            height=button_height,
+            font=ctk.CTkFont(size=12),
+            corner_radius=6,
+        )
+        help_button.pack(fill="x", padx=5, pady=3)
+
+        # Main area with log - now more responsive
+        log_frame = ctk.CTkFrame(content_frame)
+        log_frame.grid(row=0, column=1, sticky="nsew")
         log_frame.grid_rowconfigure(1, weight=1)
         log_frame.grid_columnconfigure(0, weight=1)
 
-        # Log label
-        log_label = ctk.CTkLabel(
-            log_frame, text="Activity Log:", font=ctk.CTkFont(size=14, weight="bold")
-        )
-        log_label.grid(row=0, column=0, sticky="w", padx=20, pady=(20, 10))
+        # Log header with icon
+        log_header = ctk.CTkFrame(log_frame, fg_color="transparent")
+        log_header.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 3))
+        log_header.grid_columnconfigure(1, weight=1)
 
-        # Log textbox
-        self.log_textbox = ctk.CTkTextbox(log_frame, height=200, wrap="word")
-        self.log_textbox.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 20))
+        log_icon = ctk.CTkLabel(
+            log_header,
+            text="📋",  # Unicode clipboard icon
+            font=ctk.CTkFont(size=16),
+        )
+        log_icon.grid(row=0, column=0, padx=(0, 3))
+
+        log_label = ctk.CTkLabel(
+            log_header,
+            text="Activity Log",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            anchor="w",
+        )
+        log_label.grid(row=0, column=1, sticky="w")
+
+        # Log textbox with border
+        log_container = ctk.CTkFrame(log_frame)
+        log_container.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
+        log_container.grid_rowconfigure(0, weight=1)
+        log_container.grid_columnconfigure(0, weight=1)
+
+        self.log_textbox = ctk.CTkTextbox(
+            log_container,
+            wrap="word",
+            font=ctk.CTkFont(size=12),
+        )
+        self.log_textbox.grid(row=0, column=0, sticky="nsew", padx=1, pady=1)
 
         # Initially disable automation button if no config
         self._update_button_states()
@@ -178,9 +393,27 @@ class RevolutionIdleGUI:
         self._update_button_states()
 
     def _update_status(self, message: str) -> None:
-        """Update the status label."""
+        """Update the status label and indicator."""
         if self.status_label:
             self.status_label.configure(text=message)
+
+            # Find status indicator (sibling of status_label)
+            status_frame = self.status_label.master
+            for child in status_frame.winfo_children():
+                if isinstance(child, ctk.CTkLabel) and child != self.status_label:
+                    # Update color based on status message
+                    if "error" in message.lower():
+                        child.configure(text_color=("red", "red"))
+                    elif "active" in message.lower() or "running" in message.lower():
+                        child.configure(text_color=("green", "green"))
+                    elif "setup" in message.lower():
+                        child.configure(text_color=("orange", "orange"))
+                    elif "loaded" in message.lower():
+                        child.configure(text_color=("cyan", "cyan"))
+                    else:
+                        child.configure(text_color=("gray60", "gray60"))
+                    break
+
             logger.debug("Status updated: %s", message)
 
     def _log_message(self, message: str) -> None:
@@ -194,11 +427,20 @@ class RevolutionIdleGUI:
 
         if self.automation_button:
             if self.is_automation_running:
-                self.automation_button.configure(text="Stop Automation", fg_color="red")
+                self.automation_button.configure(
+                    text="Stop Automation",
+                    fg_color="red",
+                    hover_color="#C00000",  # Slightly darker red for subtle hover effect
+                )
                 logger.debug("Automation button set to 'Stop'")
             elif has_config:
                 self.automation_button.configure(
-                    text="Start Automation", fg_color=("green", "green")
+                    text="Start Automation",
+                    fg_color=("green", "green"),
+                    hover_color=(
+                        "#009000",
+                        "#009000",
+                    ),  # Slightly darker green for subtle hover effect
                 )
                 self.automation_button.configure(state="normal")
                 logger.debug("Automation button enabled")
@@ -459,11 +701,17 @@ class RevolutionIdleGUI:
             HelpWindow(self.root)  # Window manages its own lifecycle
 
     def _on_settings_click(self) -> None:
-        """Handle settings button click."""
-        # Reload settings
-        if self.config_manager.load_config():
-            self._log_message("Settings reloaded successfully")
-            self._update_status("Settings reloaded")
-        else:
-            self._log_message("Failed to reload settings")
-            self._update_status("Settings reload failed")
+        """Open the settings window."""
+        logger.debug("Settings button clicked")
+        if self.root and not self.settings_window:
+            self._log_message("Opening settings editor...")
+            self.settings_window = SettingsWindow(
+                self.root, on_settings_saved=self._on_settings_saved
+            )
+            logger.debug("Settings window opened")
+
+    def _on_settings_saved(self) -> None:
+        """Handle settings saved event."""
+        logger.debug("Settings saved callback triggered")
+        self._log_message("Settings saved and reloaded.")
+        self.settings_window = None
