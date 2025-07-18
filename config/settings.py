@@ -7,9 +7,13 @@ Settings are loaded from 'user_settings.json' with fallback to default values.
 """
 
 import json
+import logging
 import os
 import sys
 from typing import Any, Dict
+
+# Set up module logger
+logger = logging.getLogger(__name__)
 
 
 class SettingsLoader:
@@ -68,15 +72,28 @@ class SettingsLoader:
 
                 # Save back to ensure all settings are present
                 self._save_settings()
+                logger.info("Settings loaded from %s", settings_file)
             else:
                 # Create default settings file
                 self._settings = defaults
                 self._save_settings()
+                logger.info("Created default settings file: %s", settings_file)
                 print(f"Created default settings file: {settings_file}")
                 print("You can modify this file to customize the script behavior.")
 
-        except (IOError, OSError, json.JSONDecodeError) as e:
-            print(f"Warning: Could not load settings file: {e}")
+        except json.JSONDecodeError as e:
+            logger.error("Failed to parse settings file: %s", e)
+            print(f"Warning: Could not parse settings file: {e}")
+            print("Using default settings.")
+            self._settings = defaults
+        except PermissionError as e:
+            logger.error("Permission denied accessing settings file: %s", e)
+            print(f"Warning: Permission denied accessing settings file: {e}")
+            print("Using default settings.")
+            self._settings = defaults
+        except IOError as e:
+            logger.error("IO error accessing settings file: %s", e)
+            print(f"Warning: Could not access settings file: {e}")
             print("Using default settings.")
             self._settings = defaults
 
@@ -86,7 +103,12 @@ class SettingsLoader:
         try:
             with open(settings_file, "w", encoding="utf-8") as f:
                 json.dump(self._settings, f, indent=4)
-        except (IOError, OSError) as e:
+            logger.info("Settings saved to %s", settings_file)
+        except PermissionError as e:
+            logger.error("Permission denied saving settings file: %s", e)
+            print(f"Warning: Permission denied saving settings file: {e}")
+        except IOError as e:
+            logger.error("IO error saving settings file: %s", e)
             print(f"Warning: Could not save settings file: {e}")
 
     def get(self, key: str) -> Any:
@@ -95,6 +117,7 @@ class SettingsLoader:
 
     def reload(self) -> None:
         """Reload settings from file."""
+        logger.info("Reloading settings from file")
         self._load_settings()
 
 
@@ -170,6 +193,7 @@ def reload_settings() -> None:
     global DELAY_AFTER_DRAG, DELAY_AFTER_CLICK, STOP_KEY, MAX_ZODIAC_SLOTS
     global DEBUG_COLOR_MATCHING, MESSAGE_LEVEL
 
+    logger.info("Reloading settings")
     _settings_loader.reload()
 
     COLOR_TOLERANCE = _settings_loader.get("color_tolerance")
@@ -182,3 +206,4 @@ def reload_settings() -> None:
     MAX_ZODIAC_SLOTS = _settings_loader.get("max_zodiac_slots")
     DEBUG_COLOR_MATCHING = _settings_loader.get("debug_color_matching")
     MESSAGE_LEVEL = _settings_loader.get("message_level")
+    logger.info("Settings reloaded successfully")

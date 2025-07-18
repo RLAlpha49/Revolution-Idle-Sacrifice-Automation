@@ -68,27 +68,34 @@ class AutomationEngine:
         while self.is_running and (stop_callback is None or not stop_callback()):
             time.sleep(DELAY_BEFORE_CHECK)
 
-            # Check all zodiac slots and sacrifice button colors in one screenshot
-            coordinates_to_check = click_coords["zodiac_slots"] + [
-                click_coords["sacrifice_button"]
-            ]
-            current_colors = get_multiple_pixel_colors(coordinates_to_check)
+            try:
+                # Check all zodiac slots and sacrifice button colors in one screenshot
+                coordinates_to_check = click_coords["zodiac_slots"] + [
+                    click_coords["sacrifice_button"]
+                ]
+                current_colors = get_multiple_pixel_colors(coordinates_to_check)
 
-            if None in current_colors:
-                continue  # Skip this iteration if color detection failed
+                if None in current_colors:
+                    continue  # Skip this iteration if color detection failed
 
-            # Separate zodiac slot colors from sacrifice button color
-            zodiac_colors = current_colors[:-1]
+                # Separate zodiac slot colors from sacrifice button color
+                zodiac_colors = current_colors[:-1]
 
-            # Skip if any colors are None
-            if any(color is None for color in zodiac_colors):
-                continue
+                # Skip if any colors are None
+                if any(color is None for color in zodiac_colors):
+                    continue
 
-            # Check each zodiac slot for a match
-            if self._check_zodiac_slots(
-                zodiac_colors, target_rgbs["zodiac_slots"], click_coords, target_rgbs
-            ):
-                # If we performed an action, continue to next iteration
+                # Check each zodiac slot for a match
+                if self._check_zodiac_slots(
+                    zodiac_colors,
+                    target_rgbs["zodiac_slots"],
+                    click_coords,
+                    target_rgbs,
+                ):
+                    # If we performed an action, continue to next iteration
+                    continue
+            except (OSError, IndexError, ValueError) as e:
+                show_message(f"Error during color detection: {e}", level="debug")
                 continue
 
         # Calculate and display total automation time

@@ -37,6 +37,7 @@ Repository: https://github.com/RLAlpha49/Revolution-Idle-Sacrifice-Automation
 """
 
 import argparse
+import logging
 import os
 import sys
 from typing import Any
@@ -44,6 +45,27 @@ from typing import Any
 # Add the project root to Python path to enable imports
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
+
+
+def setup_logging() -> None:
+    """Configure logging for the application."""
+    # Create logs directory if it doesn't exist
+    logs_dir = os.path.join(project_root, "logs")
+    os.makedirs(logs_dir, exist_ok=True)
+
+    # Configure logging
+    log_file = os.path.join(logs_dir, "revolution_idle_automation.log")
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler(log_file), logging.StreamHandler(sys.stdout)],
+    )
+
+    # Set specific loggers to different levels if needed
+    # logging.getLogger("some_module").setLevel(logging.DEBUG)
+
+    logging.info("Logging initialized")
 
 
 def parse_arguments() -> Any:
@@ -72,6 +94,10 @@ Examples:
 
 def main() -> None:
     """Main entry point for the Revolution Idle Sacrifice Automation Script."""
+    # Set up logging
+    setup_logging()
+
+    # Parse arguments
     args = parse_arguments()
 
     # Default to CLI mode if no mode specified
@@ -81,13 +107,15 @@ def main() -> None:
         if use_gui:
             # Try to import GUI dependencies
             try:
-                from src.gui import RevolutionIdleGUI  # pylint: disable=import-outside-toplevel
+                from src.gui.app import RevolutionIdleGUI  # pylint: disable=import-outside-toplevel
 
+                logging.info("Starting Revolution Idle Automation in GUI mode...")
                 print("Starting Revolution Idle Automation in GUI mode...")
                 gui_app = RevolutionIdleGUI()
                 gui_app.run()
 
             except ImportError as e:
+                logging.error("GUI dependencies missing: %s", e)
                 print(f"Error: GUI mode requires additional dependencies: {e}")
                 print(
                     "Please install the GUI dependencies: pip install customtkinter>=5.2.0"
@@ -100,16 +128,23 @@ def main() -> None:
                 RevolutionIdleApp,
             )
 
+            logging.info("Starting Revolution Idle Automation in CLI mode...")
             print("Starting Revolution Idle Automation in CLI mode...")
             cli_app = RevolutionIdleApp()
             cli_app.run()
 
     except KeyboardInterrupt:
+        logging.info("Script interrupted by user (Ctrl+C)")
         print("\n\nScript interrupted by user (Ctrl+C). Exiting...")
         sys.exit(0)
     except ImportError as e:
+        logging.error("Missing required dependencies: %s", e)
         print(f"\nMissing required dependencies: {e}")
         print("Please install required packages: pip install -r requirements.txt")
+        sys.exit(1)
+    except Exception as e:  # pylint: disable=broad-except
+        logging.exception("Unhandled exception")
+        print(f"\nAn unexpected error occurred: {e}")
         sys.exit(1)
 
 

@@ -46,8 +46,14 @@ def get_pixel_color(x: int, y: int) -> Optional[Tuple[int, int, int]]:
 
         print(f"ERROR: Unexpected pixel color format: {pixel_color}")
         return None
-    except Exception as e:  # pylint: disable=broad-except
-        print(f"ERROR: Could not get pixel color at ({x}, {y}): {e}")
+    except OSError as e:
+        print(f"ERROR: Could not capture screenshot: {e}")
+        return None
+    except IndexError as e:
+        print(f"ERROR: Pixel coordinates out of bounds: {e}")
+        return None
+    except ValueError as e:
+        print(f"ERROR: Invalid pixel data: {e}")
         return None
 
 
@@ -98,8 +104,14 @@ def get_multiple_pixel_colors(
                 colors.append(None)
 
         return colors
-    except Exception as e:  # pylint: disable=broad-except
-        print(f"ERROR: Could not get multiple pixel colors: {e}")
+    except OSError as e:
+        print(f"ERROR: Could not capture screenshot: {e}")
+        return [None] * len(coordinates)
+    except IndexError as e:
+        print(f"ERROR: Pixel coordinates out of bounds: {e}")
+        return [None] * len(coordinates)
+    except ValueError as e:
+        print(f"ERROR: Invalid pixel data: {e}")
         return [None] * len(coordinates)
 
 

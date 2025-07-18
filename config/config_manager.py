@@ -6,9 +6,13 @@ click coordinates and target RGB colors for zodiac slots and sacrifice button.
 """
 
 import json
+import logging
 from typing import Dict
 
 from config.settings import CONFIG_FILE
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 class ConfigManager:
@@ -36,8 +40,17 @@ class ConfigManager:
                     indent=4,
                 )
             return True
-        except Exception as e:  # pylint: disable=broad-except
-            print(f"ERROR: Error saving configuration: {e}")
+        except json.JSONDecodeError as e:
+            logger.error("JSON encoding error: %s", e)
+            print(f"ERROR: Could not encode configuration as JSON: {e}")
+            return False
+        except PermissionError as e:
+            logger.error("Permission error: %s", e)
+            print(f"ERROR: Permission denied when saving configuration: {e}")
+            return False
+        except IOError as e:
+            logger.error("IO error saving configuration: %s", e)
+            print(f"ERROR: Could not save configuration file: {e}")
             return False
 
     def load_config(self) -> bool:
@@ -71,17 +84,24 @@ class ConfigManager:
             return True
 
         except FileNotFoundError:
+            logger.info("Configuration file '%s' not found", CONFIG_FILE)
             print(
                 f"Configuration file '{CONFIG_FILE}' not found. Please run in 'setup' mode first."
             )
             return False
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            logger.error("JSON decode error: %s", e)
             print(
                 f"ERROR: Error decoding JSON from '{CONFIG_FILE}'. File might be corrupted."
             )
             return False
-        except Exception as e:  # pylint: disable=broad-except
-            print(f"ERROR: Error loading configuration: {e}")
+        except PermissionError as e:
+            logger.error("Permission error: %s", e)
+            print(f"ERROR: Permission denied when reading configuration: {e}")
+            return False
+        except IOError as e:
+            logger.error("IO error loading configuration: %s", e)
+            print(f"ERROR: Could not read configuration file: {e}")
             return False
 
     def validate_config(self) -> bool:

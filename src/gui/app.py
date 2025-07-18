@@ -6,6 +6,7 @@ Revolution Idle Sacrifice Automation script, replacing the CLI interface
 when GUI mode is selected.
 """
 
+import logging
 import threading
 import time
 from typing import Optional
@@ -15,6 +16,7 @@ import pynput.keyboard
 import pynput.mouse
 
 from config.config_manager import ConfigManager
+from config.settings import STOP_KEY
 from src.automation_engine import AutomationEngine
 from src.gui.help_window import HelpWindow
 from src.gui.setup_window import SetupInstructionsWindow
@@ -22,12 +24,17 @@ from src.gui.utils import log_message
 from src.input_handlers import KeyboardHandler
 from src.setup_manager import SetupManager
 
+# Set up module logger
+logger = logging.getLogger(__name__)
+
 
 class RevolutionIdleGUI:
     """GUI application controller for Revolution Idle Sacrifice Automation."""
 
     def __init__(self) -> None:
         """Initialize the GUI application."""
+        logger.info("Initializing GUI application")
+
         # Initialize core components
         self.config_manager = ConfigManager()
         self.automation_engine = AutomationEngine()
@@ -59,10 +66,13 @@ class RevolutionIdleGUI:
         self._create_gui()
         self._load_initial_config()
         if self.root:
+            logger.info("Starting GUI main loop")
             self.root.mainloop()
 
     def _create_gui(self) -> None:
         """Create the main GUI window and components."""
+        logger.debug("Creating GUI components")
+
         # Set appearance mode and color theme
         ctk.set_appearance_mode("dark")
         ctk.set_default_color_theme("blue")
@@ -148,8 +158,7 @@ class RevolutionIdleGUI:
         # Initially disable automation button if no config
         self._update_button_states()
 
-        # Log initial message
-        self._log_message("Welcome to Revolution Idle Sacrifice Automation!")
+        logger.debug("GUI components created")
 
     def _load_initial_config(self) -> None:
         """Load configuration at startup."""
@@ -160,9 +169,11 @@ class RevolutionIdleGUI:
 
             self._log_message(f"Configuration loaded from {CONFIG_FILE}")
             self._update_status("Configuration loaded")
+            logger.info("Configuration loaded from %s", CONFIG_FILE)
         else:
             self._log_message("No configuration found. Please run Setup Mode first.")
             self._update_status("No configuration - Setup required")
+            logger.info("No configuration found")
 
         self._update_button_states()
 
@@ -170,10 +181,12 @@ class RevolutionIdleGUI:
         """Update the status label."""
         if self.status_label:
             self.status_label.configure(text=message)
+            logger.debug("Status updated: %s", message)
 
     def _log_message(self, message: str) -> None:
         """Add a message to the log textbox."""
         log_message(self.log_textbox, message)
+        logger.info(message)
 
     def _update_button_states(self) -> None:
         """Update button states based on current configuration and automation status."""
@@ -182,23 +195,28 @@ class RevolutionIdleGUI:
         if self.automation_button:
             if self.is_automation_running:
                 self.automation_button.configure(text="Stop Automation", fg_color="red")
+                logger.debug("Automation button set to 'Stop'")
             elif has_config:
                 self.automation_button.configure(
                     text="Start Automation", fg_color=("green", "green")
                 )
                 self.automation_button.configure(state="normal")
+                logger.debug("Automation button enabled")
             else:
                 self.automation_button.configure(
                     text="Start Automation", state="disabled"
                 )
+                logger.debug("Automation button disabled - no config")
 
         if self.setup_button:
             if self.setup_in_progress:
                 self.setup_button.configure(
                     text="Setup in Progress...", state="disabled"
                 )
+                logger.debug("Setup button disabled - setup in progress")
             else:
                 self.setup_button.configure(text="Setup Mode", state="normal")
+                logger.debug("Setup button enabled")
 
     def _on_setup_click(self) -> None:
         """Handle setup button click."""
@@ -212,6 +230,7 @@ class RevolutionIdleGUI:
         self._update_button_states()
         self._update_status("Setup mode active")
         self._log_message("Starting setup mode...")
+        logger.info("Setup mode started")
 
         # Show instructions window
         self._show_setup_instructions()
@@ -225,6 +244,7 @@ class RevolutionIdleGUI:
         setup_thread = threading.Thread(target=self._run_setup_thread)
         setup_thread.daemon = True
         setup_thread.start()
+        logger.debug("Setup thread started")
 
     def _run_setup_thread(self) -> None:
         """Run setup mode in a separate thread."""
@@ -251,9 +271,8 @@ class RevolutionIdleGUI:
     def _start_listeners(self) -> None:
         """Start mouse and keyboard listeners."""
         # Start mouse listener for setup
-        self.mouse_listener = pynput.mouse.Listener(
-            on_click=self.setup_manager.on_click
-        )
+        mouse_handler = self.setup_manager.get_mouse_handler()
+        self.mouse_listener = pynput.mouse.Listener(on_click=mouse_handler.on_click)
         self.mouse_listener.start()
 
     def _start_automation_keyboard_listener(self) -> None:
@@ -262,7 +281,7 @@ class RevolutionIdleGUI:
             on_press=self.keyboard_handler.on_press
         )
         self.keyboard_listener.start()
-        self._log_message("Press F8 to stop automation")
+        self._log_message(f"Press {STOP_KEY.upper()} to stop automation")
 
     def _stop_automation_keyboard_listener(self) -> None:
         """Stop the keyboard listener for automation."""
@@ -379,7 +398,11 @@ class RevolutionIdleGUI:
 
             # Start automation with delay to allow switching to game window
             time.sleep(3)
-            self.automation_engine.run_automation(stop_callback)
+            self.automation_engine.run_automation(
+                self.config_manager.click_coords,
+                self.config_manager.target_rgbs,
+                stop_callback,
+            )
 
             # Update GUI after automation completion
             if self.root:
@@ -405,7 +428,7 @@ class RevolutionIdleGUI:
 
     def _on_keyboard_stop_automation(self) -> None:
         """Handle keyboard stop automation event."""
-        self._log_message("Automation stopped by keyboard (F8)")
+        self._log_message(f"Automation stopped by keyboard ({STOP_KEY.upper()})")
         self._stop_automation()
 
     def _on_automation_stopped(self) -> None:
@@ -431,7 +454,9 @@ class RevolutionIdleGUI:
     def _show_help_window(self) -> None:
         """Show the help window."""
         if self.root:
-            help_window = HelpWindow(self.root)
+            # Store the window instance to prevent it from being garbage collected
+            # The window will be automatically destroyed when the user closes it
+            HelpWindow(self.root)  # Window manages its own lifecycle
 
     def _on_settings_click(self) -> None:
         """Handle settings button click."""

@@ -1,6 +1,32 @@
+# Python bytecode
 __pycache__/
-.mypy_cache/
-.ruff_cache/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE specific files
+.idea/
 .vscode/
-revolution_idle_zodiac_automation_config.json
+*.swp
+*.swo
+
+# User configuration and data files
 user_settings.json
+revolution_idle_zodiac_automation_config.json
+
+# Logs
+logs/
+*.log
+
+# OS specific
+.DS_Store
+Thumbs.db

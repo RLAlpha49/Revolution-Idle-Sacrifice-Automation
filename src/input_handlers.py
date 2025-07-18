@@ -5,6 +5,7 @@ This module handles mouse clicks during setup mode and keyboard presses
 during automation mode for the Revolution Idle automation script.
 """
 
+import logging
 from typing import Any, Callable, Optional
 
 import pygetwindow as gw  # type: ignore
@@ -14,6 +15,9 @@ import pynput.mouse
 from config.settings import MAX_ZODIAC_SLOTS, STOP_KEY
 from utils.color_utils import get_pixel_color
 from utils.display_utils import show_message
+
+# Set up module logger
+logger = logging.getLogger(__name__)
 
 
 class SetupState:
@@ -25,6 +29,7 @@ class SetupState:
         self.zodiac_slot_count: int = 0
         self.click_coords: dict = {}
         self.target_rgbs: dict = {}
+        logger.debug("SetupState initialized")
 
     def reset(self) -> None:
         """Reset setup state for a new setup session."""
@@ -32,6 +37,7 @@ class SetupState:
         self.zodiac_slot_count = 0
         self.click_coords = {}
         self.target_rgbs = {}
+        logger.debug("SetupState reset")
 
 
 class MouseHandler:
@@ -56,6 +62,8 @@ class MouseHandler:
         self.debug_mode = False
         self.window_filtering_enabled = True
 
+        logger.debug("MouseHandler initialized")
+
     def set_gui_callbacks(
         self,
         update_instructions_callback: Callable[[str], None],
@@ -64,18 +72,22 @@ class MouseHandler:
         """Set callback functions for GUI integration."""
         self.gui_update_instructions = update_instructions_callback
         self.gui_log_message = log_message_callback
+        logger.debug("GUI callbacks set for MouseHandler")
 
     def set_mode(self, mode: str) -> None:
         """Set the current operation mode."""
+        logger.debug("Setting mouse handler mode to: %s", mode)
         self.current_mode = mode
 
     def enable_debug_mode(self) -> None:
         """Enable debug mode to show all window detection details."""
         self.debug_mode = True
+        logger.debug("Debug mode enabled for MouseHandler")
 
     def disable_window_filtering(self) -> None:
         """Disable window filtering for compatibility with unusual setups."""
         self.window_filtering_enabled = False
+        logger.info("Window filtering disabled for setup")
 
     def on_click(
         self, x: int, y: int, button: pynput.mouse.Button, pressed: bool
@@ -89,8 +101,12 @@ class MouseHandler:
             return
 
         if self.current_mode == "setup":
+            logger.debug("Setup click detected: (%d, %d) with button %s", x, y, button)
             self._handle_setup_click(x, y, button)
         elif self.current_mode == "automation":
+            logger.debug(
+                "Automation click detected: (%d, %d) with button %s", x, y, button
+            )
             show_message(
                 f"Click detected at: X={x}, Y={y}. In automation mode, "
                 "clicks are performed by the script, not used for setup.",
@@ -103,9 +119,18 @@ class MouseHandler:
         if self.window_filtering_enabled and not self._is_click_on_revolution_idle(
             x, y
         ):
+            logger.debug(
+                "Click at (%d, %d) ignored - not on Revolution Idle window", x, y
+            )
             return  # Ignore clicks that are not on the Revolution Idle window
 
         if button == pynput.mouse.Button.left:
+            logger.debug(
+                "Left click at (%d, %d) in step: %s",
+                x,
+                y,
+                self.setup_state.current_step,
+            )
             if self.setup_state.current_step == "zodiac_slots":
                 self._handle_zodiac_slot_click(x, y)
             elif self.setup_state.current_step == "sacrifice_box":
@@ -114,6 +139,12 @@ class MouseHandler:
                 self._handle_sacrifice_button_click(x, y)
 
         elif button == pynput.mouse.Button.right:
+            logger.debug(
+                "Right click at (%d, %d) in step: %s",
+                x,
+                y,
+                self.setup_state.current_step,
+            )
             if (
                 self.setup_state.current_step == "zodiac_slots"
                 and self.setup_state.zodiac_slot_count > 0
@@ -121,6 +152,9 @@ class MouseHandler:
                 self._finish_zodiac_slots()
             else:
                 right_click_message = "Right-click detected. In setup mode, right-click is only used to finish adding zodiac slots."
+                logger.info(
+                    "Right click ignored - not in zodiac slots step or no slots configured"
+                )
                 if self.gui_log_message:
                     self.gui_log_message(right_click_message)
                 else:
@@ -132,12 +166,21 @@ class MouseHandler:
         if "zodiac_slots" not in self.setup_state.click_coords:
             self.setup_state.click_coords["zodiac_slots"] = []
             self.setup_state.target_rgbs["zodiac_slots"] = []
+            logger.debug("Initialized zodiac slots arrays")
 
         # Capture zodiac slot coordinates and color
         self.setup_state.click_coords["zodiac_slots"].append((x, y))
         slot_color = get_pixel_color(x, y)
         self.setup_state.target_rgbs["zodiac_slots"].append(slot_color)
         self.setup_state.zodiac_slot_count += 1
+
+        logger.info(
+            "Zodiac Slot %d captured: (%d, %d) with color %s",
+            self.setup_state.zodiac_slot_count,
+            x,
+            y,
+            slot_color,
+        )
 
         # Display message based on GUI or CLI mode
         capture_message = f"Zodiac Slot {self.setup_state.zodiac_slot_count} captured: ({x}, {y}) with color {slot_color}."
@@ -167,6 +210,10 @@ class MouseHandler:
             )
             next_instructions += "Now left-click to set the Sacrifice Drag Box."
             self.setup_state.current_step = "sacrifice_box"
+            logger.info(
+                "Maximum zodiac slots (%d) reached, moving to sacrifice box step",
+                MAX_ZODIAC_SLOTS,
+            )
 
         if self.gui_update_instructions:
             self.gui_update_instructions(next_instructions)
@@ -187,6 +234,7 @@ class MouseHandler:
     def _handle_sacrifice_box_click(self, x: int, y: int) -> None:
         """Handle clicks for sacrifice box setup."""
         self.setup_state.click_coords["sacrifice_box"] = (x, y)
+        logger.info("Sacrifice Drag Box captured: (%d, %d)", x, y)
 
         capture_message = f"Sacrifice Drag Box captured: ({x}, {y})."
         next_instructions = "Sacrifice Drag Box captured!\n\nNow left-click to set the Sacrifice Button."
@@ -202,6 +250,7 @@ class MouseHandler:
             show_message("Now left-click to set the Sacrifice Button.")
 
         self.setup_state.current_step = "sacrifice_button"
+        logger.debug("Moving to sacrifice_button step")
 
     def _handle_sacrifice_button_click(self, x: int, y: int) -> None:
         """Handle clicks for sacrifice button setup."""
@@ -211,6 +260,13 @@ class MouseHandler:
         self.setup_state.click_coords["sacrifice_button"] = (x, y)
         # Hardcoded RGB for the Sacrifice Button
         self.setup_state.target_rgbs["sacrifice_button"] = sacrifice_button_rgb
+
+        logger.info(
+            "Sacrifice Button captured: (%d, %d) with hardcoded color %s",
+            x,
+            y,
+            sacrifice_button_rgb,
+        )
 
         capture_message = f"Sacrifice Button captured: ({x}, {y}). Its target color is hardcoded to {sacrifice_button_rgb}."
         completion_message = f"Setup complete! Configured {len(self.setup_state.click_coords['zodiac_slots'])} zodiac slots. Saving Revolution Idle configuration."
@@ -227,6 +283,7 @@ class MouseHandler:
             self.gui_update_instructions(final_instructions)
 
         self.setup_state.current_step = "complete"
+        logger.info("Setup completed successfully")
 
         if self.on_setup_complete:
             self.on_setup_complete()
@@ -235,6 +292,11 @@ class MouseHandler:
         """Finish adding zodiac slots and proceed to sacrifice box."""
         message = f"Finished adding zodiac slots. {self.setup_state.zodiac_slot_count} zodiac slots configured."
         next_instructions = f"Zodiac slots configuration complete!\n\n{self.setup_state.zodiac_slot_count} zodiac slots have been configured.\n\nNow left-click to set the Sacrifice Drag Box."
+
+        logger.info(
+            "Finished adding zodiac slots. %d slots configured",
+            self.setup_state.zodiac_slot_count,
+        )
 
         if self.gui_log_message:
             self.gui_log_message(message)
@@ -247,92 +309,81 @@ class MouseHandler:
             show_message("Now left-click to set the Sacrifice Drag Box.")
 
         self.setup_state.current_step = "sacrifice_box"
+        logger.debug("Moving to sacrifice_box step")
 
     def _is_click_on_revolution_idle(self, x: int, y: int) -> bool:
         """
-        Check if the click coordinates are within the Revolution Idle window.
-
-        Args:
-            x: X coordinate of the click
-            y: Y coordinate of the click
-
-        Returns:
-            True if click is on Revolution Idle window, False otherwise
+        Check if the click coordinates are within the Revolution Idle game window.
+        This helps prevent accidental clicks on other windows during setup.
         """
         try:
-            # Get all windows at the click position
-            windows_at_position = gw.getWindowsAt(x, y)
-
-            if not windows_at_position:
-                return False
-
-            # Get the topmost window
-            top_window = windows_at_position[0]
-            top_window_title = top_window.title.strip()
-
-            # Check if the topmost window is Revolution Idle
-            if top_window_title == "Revolution Idle":
-                if self.gui_log_message:
-                    self.gui_log_message(
-                        "Click registered on Revolution Idle game window"
-                    )
+            if not self.window_filtering_enabled:
+                logger.debug("Window filtering disabled, accepting all clicks")
                 return True
 
-            # Special case: If the top window is Discord overlay, check the window beneath it
-            if top_window_title.lower() == "discord overlay":
-                for window in windows_at_position[
-                    1:
-                ]:  # Skip the first (Discord overlay)
-                    window_title = window.title.strip()
-                    if window_title == "Revolution Idle":
-                        if self.gui_log_message:
-                            self.gui_log_message(
-                                "Click registered on Revolution Idle game window (beneath Discord overlay)"
-                            )
-                        return True
+            # Try to find the Revolution Idle window
+            revolution_idle_windows = []
 
-                # Discord overlay detected but no Revolution Idle beneath
-                if self.gui_log_message:
-                    self.gui_log_message(
-                        "Click ignored - Discord overlay detected but no Revolution Idle window found beneath it"
-                    )
+            try:
+                # Look for windows with "Revolution Idle" in the title
+                revolution_idle_windows = gw.getWindowsWithTitle("Revolution Idle")
+
+                # Also look for windows with "Discord" in the title (for Discord overlay)
+                discord_windows = gw.getWindowsWithTitle("Discord")
+
+                # If we found Discord windows, add them to the list
+                revolution_idle_windows.extend(discord_windows)
+
+            except Exception as e:  # pylint: disable=broad-except
+                logger.warning("Error finding game windows: %s", e)
+                # If we can't find the windows, disable filtering and accept all clicks
+                self.window_filtering_enabled = False
+                return True
+
+            if not revolution_idle_windows:
+                logger.warning("No Revolution Idle or Discord windows found")
+                if self.debug_mode:
+                    all_windows = gw.getAllTitles()
+                    logger.debug("Available windows: %s", all_windows)
                 return False
 
-            # Check for browser tabs that might contain "Revolution Idle" as the exact title
-            browser_keywords = ["chrome", "firefox", "edge", "browser", "webkit"]
-            if any(browser in top_window_title.lower() for browser in browser_keywords):
-                if (
-                    "Revolution Idle" in top_window_title
-                    and "Revolution Idle Sacrifice Automation" not in top_window_title
-                    and "Setup Instructions" not in top_window_title
-                ):
-                    if self.gui_log_message:
-                        self.gui_log_message(
-                            f"Click registered on browser window with Revolution Idle: {top_window_title}"
-                        )
-                    return True
+            # Check if the click is within any of the Revolution Idle windows
+            for window in revolution_idle_windows:
+                try:
+                    if (
+                        window.left <= x <= window.right
+                        and window.top <= y <= window.bottom
+                    ):
+                        if self.debug_mode:
+                            logger.debug(
+                                "Click at (%d, %d) is within window '%s' at (%d, %d, %d, %d)",
+                                x,
+                                y,
+                                window.title,
+                                window.left,
+                                window.top,
+                                window.right,
+                                window.bottom,
+                            )
+                        return True
+                except Exception as e:  # pylint: disable=broad-except
+                    logger.warning(
+                        "Error checking window bounds for %s: %s", window.title, e
+                    )
+                    continue
 
-            # Log what was clicked for debugging
-            if self.gui_log_message:
-                self.gui_log_message(
-                    f"Click ignored - not on Revolution Idle game window. Clicked on: '{top_window_title}'"
+            if self.debug_mode:
+                logger.debug(
+                    "Click at (%d, %d) is not within any Revolution Idle or Discord window",
+                    x,
+                    y,
                 )
-            elif self.current_mode == "setup":
-                show_message(
-                    f"Click ignored - not on Revolution Idle game window. Clicked on: '{top_window_title}'",
-                    level="debug",
-                )
-
             return False
 
         except Exception as e:  # pylint: disable=broad-except
-            # If window detection fails, log the error but allow the click
-            # This ensures the setup still works even if window detection has issues
-            error_msg = f"Window detection failed: {e}. Processing click anyway for compatibility."
-            if self.gui_log_message:
-                self.gui_log_message(error_msg)
-            else:
-                show_message(error_msg, level="debug")
+            logger.error("Error in window detection: %s", e, exc_info=True)
+            # If there's an error, disable window filtering and accept all clicks
+            self.window_filtering_enabled = False
             return True
 
 
@@ -341,43 +392,39 @@ class KeyboardHandler:
 
     def __init__(self, on_stop_automation: Optional[Callable] = None) -> None:
         self.on_stop_automation = on_stop_automation
-        self.stop_automation: bool = False
+        self.stop_automation = False
+        logger.debug("KeyboardHandler initialized")
 
     def reset_stop_flag(self) -> None:
-        """Reset the stop automation flag."""
+        """Reset the stop flag before starting a new automation session."""
         self.stop_automation = False
+        logger.debug("Stop flag reset")
 
     def on_press(self, key: Any) -> None:
         """
-        Callback function executed when a keyboard key is pressed.
-        Used to detect the configured STOP_KEY to stop the automation.
+        Callback function executed when a key is pressed.
+        Checks for the stop key to halt automation.
         """
-        # Only process the stop key if automation is currently running
-        if not self.stop_automation:
-            try:
-                # Check if it's a character key
-                if isinstance(key, pynput.keyboard.KeyCode):
-                    if key.char == STOP_KEY:
-                        show_message(
-                            f" '{STOP_KEY}' key pressed. Stopping Revolution Idle Sacrifice Automation.",
-                            level="info",
-                        )
-                        self.stop_automation = True
-                        if self.on_stop_automation:
-                            self.on_stop_automation()
-                # Check if it's a special key
-                elif isinstance(key, pynput.keyboard.Key):
-                    if key.name == STOP_KEY:
-                        show_message(
-                            f" '{STOP_KEY}' key pressed. Stopping Revolution Idle Sacrifice Automation.",
-                            level="info",
-                        )
-                        self.stop_automation = True
-                        if self.on_stop_automation:
-                            self.on_stop_automation()
-            except AttributeError:
-                # This catch block is for unexpected key types, though unlikely with pynput.
-                show_message(
-                    f"An unknown key type was pressed: {key}. Not the configured STOP_KEY.",
-                    level="debug",
-                )
+        try:
+            # Convert key to string representation for comparison
+            key_str = None
+
+            # Handle special keys
+            if hasattr(key, "char") and key.char:
+                key_str = key.char
+            elif hasattr(key, "name") and key.name:
+                key_str = key.name
+            elif hasattr(key, "_name_") and key._name_:  # pylint: disable=protected-access
+                key_str = key._name_  # pylint: disable=protected-access
+            elif isinstance(key, str):
+                key_str = key
+
+            # Check if this is the stop key
+            if key_str and key_str.lower() == STOP_KEY.lower():
+                logger.info("Stop key '%s' pressed, stopping automation", STOP_KEY)
+                self.stop_automation = True
+                if self.on_stop_automation:
+                    self.on_stop_automation()
+
+        except Exception:  # pylint: disable=broad-except
+            logger.error("Error handling key press", exc_info=True)
