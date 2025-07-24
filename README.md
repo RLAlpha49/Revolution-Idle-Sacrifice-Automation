@@ -1,5 +1,14 @@
 # Revolution Idle Sacrifice Automation Script
 
+> [!IMPORTANT]
+> **⚠️ THIS SCRIPT IS NO LONGER MAINTAINED ⚠️**
+>
+> As of **Revolution Idle v1.031**, the game now includes **Auto Sacrifice** as a built-in feature in the automations menu. This external script is **no longer necessary** and will **not receive further updates or development**.
+>
+> **Please use the official in-game Auto Sacrifice feature instead.**
+
+---
+
 This script automates the zodiac sacrificing process in the game **Revolution Idle**. It streamlines repetitive tasks by automating mouse movements and clicks based on pixel color detection.
 
 ---
