@@ -9,6 +9,8 @@ import logging
 import time
 from typing import Callable, Optional
 
+import pygetwindow as gw  # type: ignore
+
 from config.settings import MAX_ZODIAC_SLOTS
 from src.input_handlers import MouseHandler, SetupState
 from utils.display_utils import show_message
@@ -30,6 +32,7 @@ class SetupManager:
         # GUI callback functions
         self.gui_update_instructions: Optional[Callable[[str], None]] = None
         self.gui_log_message: Optional[Callable[[str], None]] = None
+        self.gui_show_error: Optional[Callable[[str, str], None]] = None
 
         logger.debug("SetupManager initialized")
 
@@ -37,10 +40,18 @@ class SetupManager:
         self,
         update_instructions_callback: Callable[[str], None],
         log_message_callback: Callable[[str], None],
+        show_error_callback: Optional[Callable[[str, str], None]] = None,
     ) -> None:
-        """Set callback functions for GUI integration."""
+        """Set callback functions for GUI integration.
+
+        Args:
+            update_instructions_callback: Callback to update setup instructions
+            log_message_callback: Callback to log messages
+            show_error_callback: Optional callback to show error dialogs
+        """
         self.gui_update_instructions = update_instructions_callback
         self.gui_log_message = log_message_callback
+        self.gui_show_error = show_error_callback
 
         # Also set callbacks for the mouse handler
         self.mouse_handler.set_gui_callbacks(
@@ -58,6 +69,43 @@ class SetupManager:
     def run_setup_mode(self) -> None:
         """Handle the interactive setup process for multiple zodiac slots."""
         logger.info("Starting setup mode")
+
+        # Check if Revolution Idle game is running before starting setup
+        if not self._check_revolution_idle_running():
+            error_title = "Revolution Idle Game Not Detected"
+            error_message = (
+                "Revolution Idle game not detected!\n\n"
+                "Please make sure the Revolution Idle game is running before starting setup.\n"
+                "The setup process requires the game window to be open to capture coordinates and colors."
+            )
+
+            logger.warning("Setup cancelled - Revolution Idle game not detected")
+
+            if self.gui_show_error:
+                # Show error dialog like advanced mode does
+                self.gui_show_error(error_title, error_message)
+                if self.gui_log_message:
+                    self.gui_log_message(
+                        "Setup cancelled: Revolution Idle game not detected."
+                    )
+            elif self.gui_log_message:
+                # Fallback to instructions update if no error dialog available
+                self.gui_log_message(
+                    "Setup cancelled: Revolution Idle game not detected."
+                )
+                if self.gui_update_instructions:
+                    self.gui_update_instructions(error_message)
+            else:
+                # CLI mode fallback
+                show_message(
+                    "Setup cancelled: Revolution Idle game not detected.", level="error"
+                )
+                show_message(error_message, level="error")
+
+            # Mark setup as cancelled and complete
+            self.setup_cancelled = True
+            self.setup_complete = True
+            return
 
         # Reset for a new setup session
         self.setup_state.reset()
@@ -201,7 +249,84 @@ class SetupManager:
         """Get the mouse handler for listener registration."""
         return self.mouse_handler
 
+    def _check_revolution_idle_running(self) -> bool:
+        """Check if Revolution Idle game is currently running.
+
+        Returns:
+            bool: True if Revolution Idle window is found, False otherwise.
+        """
+        try:
+            # Look for windows with "Revolution Idle" in the title
+            all_windows = gw.getAllWindows()
+
+            game_windows = []
+            for window in all_windows:
+                window_title = window.title.strip()
+
+                # Only accept windows with EXACTLY "Revolution Idle" as the title
+                # This is much stricter and avoids matching editors, file paths, etc.
+                if window_title == "Revolution Idle":
+                    # Additional validation: check if window has reasonable game dimensions
+                    # Game windows are typically larger than 400x300 pixels
+                    try:
+                        width = window.width
+                        height = window.height
+
+                        if width >= 400 and height >= 300:
+                            game_windows.append(window)
+                            logger.debug(
+                                "Found valid Revolution Idle game window: '%s' (%dx%d)",
+                                window_title,
+                                width,
+                                height,
+                            )
+                        else:
+                            logger.debug(
+                                "Skipping small window '%s' (%dx%d) - likely not the game",
+                                window_title,
+                                width,
+                                height,
+                            )
+                    except (AttributeError, TypeError):
+                        # If we can't get dimensions, skip this window
+                        logger.debug(
+                            "Skipping window '%s' - cannot get dimensions", window_title
+                        )
+                        continue
+                else:
+                    # Log any window that contains "Revolution Idle" but doesn't match exactly
+                    if "revolution idle" in window_title.lower():
+                        logger.debug(
+                            "Skipping non-exact match: '%s' (not exactly 'Revolution Idle')",
+                            window_title,
+                        )
+
+            if game_windows:
+                logger.info(
+                    "Revolution Idle game detected - %d valid game window(s) found",
+                    len(game_windows),
+                )
+                return True
+            else:
+                logger.warning(
+                    "No Revolution Idle game windows found (must be exactly titled 'Revolution Idle')"
+                )
+                return False
+
+        except Exception as e:
+            logger.error(
+                "Error checking for Revolution Idle game: %s", e, exc_info=True
+            )
+            # If there's an error detecting windows, be conservative and assume game is NOT running
+            # This prevents false positives
+            return False
+
     def disable_window_detection(self) -> None:
         """Disable window detection for the mouse handler."""
         logger.info("Disabling window detection for setup")
         self.mouse_handler.disable_window_filtering()
+
+    def enable_debug_mode(self) -> None:
+        """Enable debug mode for detailed window detection logging."""
+        logger.info("Enabling debug mode for setup")
+        self.mouse_handler.enable_debug_mode()

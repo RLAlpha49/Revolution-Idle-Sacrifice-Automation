@@ -14,6 +14,7 @@ from typing import Any, Dict, Optional, Callable, List, Tuple
 import customtkinter as ctk  # type: ignore
 
 from config.settings import _settings_loader, reload_settings
+from .window_utils import WindowPositioner
 
 # Set up module logger
 logger = logging.getLogger(__name__)
@@ -621,11 +622,10 @@ class SettingsWindow:
                 dialog.resizable(False, False)
                 dialog.grab_set()
 
-                # Center the dialog on the settings window
-                if self.window.winfo_ismapped():
-                    x = self.window.winfo_x() + (self.window.winfo_width() // 2) - 200
-                    y = self.window.winfo_y() + (self.window.winfo_height() // 2) - 90
-                    dialog.geometry(f"+{x}+{y}")
+                # Position relative to parent window with multi-monitor support
+                WindowPositioner.position_window_relative(
+                    self.window, self.parent, 600, 700, position="center_offset"
+                )
 
                 # Message
                 label = ctk.CTkLabel(

@@ -321,18 +321,57 @@ class MouseHandler:
                 logger.debug("Window filtering disabled, accepting all clicks")
                 return True
 
-            # Try to find the Revolution Idle window
+            # Try to find the Revolution Idle window using strict criteria
             revolution_idle_windows = []
 
             try:
-                # Look for windows with "Revolution Idle" in the title
-                revolution_idle_windows = gw.getWindowsWithTitle("Revolution Idle")
+                # Get all windows and check each one strictly
+                all_windows = gw.getAllWindows()
 
-                # Also look for windows with "Discord" in the title (for Discord overlay)
-                discord_windows = gw.getWindowsWithTitle("Discord")
+                for window in all_windows:
+                    window_title = window.title.strip()
 
-                # If we found Discord windows, add them to the list
-                revolution_idle_windows.extend(discord_windows)
+                    # Only accept windows with EXACTLY "Revolution Idle" as the title
+                    if window_title == "Revolution Idle":
+                        # Additional validation: check if window has reasonable game dimensions
+                        try:
+                            width = window.width
+                            height = window.height
+
+                            if width >= 400 and height >= 300:
+                                revolution_idle_windows.append(window)
+                                logger.debug(
+                                    "Found valid Revolution Idle game window: '%s' (%dx%d)",
+                                    window_title,
+                                    width,
+                                    height,
+                                )
+                            else:
+                                logger.debug(
+                                    "Skipping small window '%s' (%dx%d) - likely not the game",
+                                    window_title,
+                                    width,
+                                    height,
+                                )
+                        except (AttributeError, TypeError):
+                            logger.debug(
+                                "Skipping window '%s' - cannot get dimensions",
+                                window_title,
+                            )
+                            continue
+                    elif window_title == "Discord":
+                        # Also accept Discord windows for overlay support
+                        revolution_idle_windows.append(window)
+                        logger.debug(
+                            "Found Discord window for overlay support: %s", window_title
+                        )
+                    else:
+                        # Log any window that contains "Revolution Idle" but doesn't match exactly
+                        if "revolution idle" in window_title.lower():
+                            logger.debug(
+                                "Skipping non-exact match: '%s' (not exactly 'Revolution Idle')",
+                                window_title,
+                            )
 
             except Exception as e:  # pylint: disable=broad-except
                 logger.warning("Error finding game windows: %s", e)

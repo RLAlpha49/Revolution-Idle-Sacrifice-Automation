@@ -9,8 +9,8 @@ import logging
 import os
 from typing import Any, Optional
 
-import customtkinter as ctk  # type: ignore
-
+import customtkinter as ctk
+from .window_utils import WindowPositioner
 from config.settings import STOP_KEY
 from src.gui.utils import (
     create_info_label,
@@ -41,9 +41,10 @@ class HelpWindow:
         try:
             self.window = ctk.CTkToplevel(self.parent)
             self.window.title("Revolution Idle Sacrifice Automation - Help")
-            self.window.geometry("800x600")
-            self.window.minsize(600, 500)
-            self.window.grab_set()  # Make the window modal
+            # Position relative to parent window with multi-monitor support
+            WindowPositioner.position_window_relative(
+                self.window, self.parent, 800, 600, position="center_offset"
+            )  # Make the window modal
 
             # Create main frame
             main_frame = ctk.CTkFrame(self.window)

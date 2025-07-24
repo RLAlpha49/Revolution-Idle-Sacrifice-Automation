@@ -9,7 +9,7 @@ when GUI mode is selected.
 import logging
 import threading
 import time
-from typing import Optional
+from typing import Optional, Dict, Any
 import os
 import sys
 import json
@@ -21,9 +21,11 @@ import pynput.mouse
 from config.config_manager import ConfigManager
 from config.settings import STOP_KEY
 from src.automation_engine import AutomationEngine
-from src.gui.help_window import HelpWindow
-from src.gui.settings_window import SettingsWindow
-from src.gui.setup_window import SetupInstructionsWindow
+from .automation_config_window import AutomationConfigWindow
+from .help_window import HelpWindow
+from .settings_window import SettingsWindow
+from .window_utils import WindowPositioner
+from src.gui.setup_instructions_window import SetupInstructionsWindow
 from src.gui.utils import log_message
 from src.input_handlers import KeyboardHandler
 from src.setup_manager import SetupManager
@@ -55,10 +57,12 @@ class RevolutionIdleGUI:
         self.log_textbox: Optional[ctk.CTkTextbox] = None
         self.automation_button: Optional[ctk.CTkButton] = None
         self.setup_button: Optional[ctk.CTkButton] = None
+        self.mode_switch: Optional[ctk.CTkSwitch] = None
 
         # Windows
         self.setup_window: Optional[SetupInstructionsWindow] = None
         self.settings_window: Optional[SettingsWindow] = None
+        self.automation_config_window: Optional[AutomationConfigWindow] = None
 
         # State management
         self.automation_thread: Optional[threading.Thread] = None
@@ -249,6 +253,31 @@ class RevolutionIdleGUI:
         )
         auto_label.pack(side="left")
 
+        # Mode toggle frame in automation section
+        mode_frame = ctk.CTkFrame(automation_section, fg_color="transparent")
+        mode_frame.pack(fill="x", padx=5, pady=(5, 3))
+
+        mode_label = ctk.CTkLabel(
+            mode_frame,
+            text="Mode:",
+            font=ctk.CTkFont(size=11),
+            text_color=("gray70", "gray50"),
+        )
+        mode_label.pack(side="left", padx=(0, 5))
+
+        # Mode toggle switch
+        self.mode_switch = ctk.CTkSwitch(
+            mode_frame,
+            text="Advanced",
+            command=self._on_mode_toggle,
+            font=ctk.CTkFont(size=11),
+            width=80,
+        )
+        self.mode_switch.pack(side="left")
+
+        # Set initial mode based on config
+        self._update_mode_switch()
+
         # Prominent automation button
         self.automation_button = ctk.CTkButton(
             automation_section,
@@ -287,7 +316,7 @@ class RevolutionIdleGUI:
         # Control buttons in sidebar
         self.setup_button = ctk.CTkButton(
             config_section,
-            text="Setup Mode",
+            text="Automation Config",
             command=self._on_setup_click,
             width=button_width,
             height=button_height,
@@ -391,6 +420,7 @@ class RevolutionIdleGUI:
             logger.info("No configuration found")
 
         self._update_button_states()
+        self._update_mode_switch()
 
     def _update_status(self, message: str) -> None:
         """Update the status label and indicator."""
@@ -457,7 +487,7 @@ class RevolutionIdleGUI:
                 )
                 logger.debug("Setup button disabled - setup in progress")
             else:
-                self.setup_button.configure(text="Setup Mode", state="normal")
+                self.setup_button.configure(text="Automation Config", state="normal")
                 logger.debug("Setup button enabled")
 
     def _on_setup_click(self) -> None:
@@ -465,6 +495,87 @@ class RevolutionIdleGUI:
         if self.setup_in_progress:
             return
 
+        # Create config data dictionary for the window
+        # Only include the actual configuration data, not metadata
+        base_config = {
+            "click_coords": self.config_manager.click_coords,
+            "target_rgbs": self.config_manager.target_rgbs,
+        }
+
+        # Add metadata for UI purposes
+        config_data = {
+            **base_config,
+            "active_mode": self.config_manager.get_active_mode(),
+            "has_simple_config": self.config_manager.has_simple_config(),
+            "has_advanced_config": self.config_manager.has_advanced_config(),
+        }
+
+        # Add advanced config data if it exists
+        if self.config_manager.has_advanced_config():
+            advanced_config = self.config_manager.get_advanced_config()
+            # Filter out metadata that might have been saved incorrectly
+            clean_advanced = {
+                k: v
+                for k, v in advanced_config.items()
+                if k
+                not in [
+                    "simple_config",
+                    "advanced_config",
+                    "has_simple_config",
+                    "has_advanced_config",
+                ]
+            }
+            config_data.update(clean_advanced)
+
+        # Show the automation configuration window
+        self.automation_config_window = AutomationConfigWindow(
+            self.root, config_data, self._start_setup_process, self._on_config_saved
+        )
+
+        logger.debug("Automation configuration window opened")
+
+    def _on_config_saved(self, config_data: Dict[str, Any]) -> None:
+        """Handle configuration being saved from the automation config window.
+
+        Args:
+            config_data: The updated configuration data
+        """
+        try:
+            # Check if this is advanced configuration
+            if config_data.get("advanced_mode", False):
+                # Save as advanced configuration
+                if self.config_manager.save_advanced_config(config_data):
+                    logger.info("Advanced configuration saved successfully")
+                    self._log_message("Advanced configuration saved successfully!")
+                else:
+                    logger.error("Failed to save advanced configuration")
+                    self._log_message("ERROR: Failed to save advanced configuration!")
+            else:
+                # Save as simple configuration
+                if "click_coords" in config_data:
+                    self.config_manager.click_coords = config_data["click_coords"]
+
+                if "target_rgbs" in config_data:
+                    self.config_manager.target_rgbs = config_data["target_rgbs"]
+
+                # Save the configuration to file
+                if self.config_manager.save_config("simple"):
+                    logger.info("Simple configuration saved successfully")
+                    self._log_message("Configuration saved successfully!")
+                else:
+                    logger.error("Failed to save simple configuration")
+                    self._log_message("ERROR: Failed to save configuration!")
+
+            # Update the UI to reflect the new configuration
+            self._update_button_states()
+            self._update_mode_switch()
+
+        except Exception as e:
+            logger.error("Error saving configuration: %s", e, exc_info=True)
+            self._log_message(f"ERROR: Failed to save configuration: {e}")
+
+    def _start_setup_process(self) -> None:
+        """Start the actual setup process after configuration window."""
         # Reset window detection state for new setup session
         self.window_detection_disabled = False
 
@@ -479,7 +590,7 @@ class RevolutionIdleGUI:
 
         # Set up the setup manager to use GUI callbacks
         self.setup_manager.set_gui_callbacks(
-            self._update_setup_instructions, self._log_message
+            self._update_setup_instructions, self._log_message, self._show_error_dialog
         )
 
         # Run setup in a separate thread to avoid blocking GUI
@@ -575,6 +686,7 @@ class RevolutionIdleGUI:
             self.root,
             self._cancel_setup,
             self._disable_window_detection,
+            self._enable_debug_mode,
         )
 
     def _update_setup_instructions(self, message: str) -> None:
@@ -598,6 +710,11 @@ class RevolutionIdleGUI:
         self.window_detection_disabled = True
         self.setup_manager.disable_window_detection()
         self._log_message("Window detection disabled for this setup session")
+
+    def _enable_debug_mode(self) -> None:
+        """Enable debug mode for setup."""
+        self.setup_manager.enable_debug_mode()
+        self._log_message("Debug mode enabled for this setup session")
 
     def _close_setup_window(self) -> None:
         """Close the setup instructions window."""
@@ -692,6 +809,83 @@ class RevolutionIdleGUI:
     def _on_help_click(self) -> None:
         """Handle help button click."""
         self._show_help_window()
+
+    def _on_mode_toggle(self) -> None:
+        """Handle user toggling between simple and advanced mode."""
+        try:
+            if self.mode_switch:
+                is_advanced = self.mode_switch.get()
+                mode = "advanced" if is_advanced else "simple"
+
+                # Update the active mode in config data
+                self.config_manager.config_data["active_mode"] = mode
+
+                # Save the configuration with the new mode
+                if self.config_manager.save_config(mode):
+                    self._log_message(f"Mode switched to: {mode.title()}")
+                    logger.info("User switched to %s mode", mode)
+                else:
+                    self._log_message("Failed to save mode preference")
+                    logger.error("Failed to save mode preference")
+
+                self._update_button_states()
+        except (AttributeError, ValueError) as e:
+            logger.error("Error handling mode toggle: %s", e, exc_info=True)
+            self._log_message("Error switching modes")
+
+    def _update_mode_switch(self) -> None:
+        """Update the mode switch based on current configuration."""
+        try:
+            if self.mode_switch:
+                # Check if we have advanced configuration
+                has_advanced = self.config_manager.has_advanced_config()
+                current_mode = self.config_manager.get_active_mode()
+
+                # Set switch based on current mode or presence of advanced config
+                is_advanced = current_mode == "advanced" or (
+                    has_advanced and current_mode != "simple"
+                )
+
+                self.mode_switch.select() if is_advanced else self.mode_switch.deselect()
+                logger.debug(
+                    "Mode switch updated to: %s",
+                    "advanced" if is_advanced else "simple",
+                )
+
+        except (AttributeError, ValueError) as e:
+            logger.error("Error updating mode switch: %s", e, exc_info=True)
+
+    def _show_error_dialog(self, title: str, message: str) -> None:
+        """Show an error dialog to the user.
+
+        Args:
+            title: Title of the error dialog
+            message: Error message to display
+        """
+        if self.root:
+            error_window = ctk.CTkToplevel(self.root)
+            error_window.title(title)
+            error_window.transient(self.root)
+            error_window.grab_set()
+
+            # Position relative to main window with multi-monitor support
+            WindowPositioner.position_window_relative(
+                error_window, self.root, 450, 200, position="center"
+            )
+
+            # Error message label
+            label = ctk.CTkLabel(
+                error_window, text=message, wraplength=400, font=ctk.CTkFont(size=12)
+            )
+            label.pack(pady=20, padx=20, expand=True)
+
+            # OK button
+            button = ctk.CTkButton(
+                error_window, text="OK", command=error_window.destroy, width=80
+            )
+            button.pack(pady=10)
+
+            logger.debug("Error dialog shown: %s", title)
 
     def _show_help_window(self) -> None:
         """Show the help window."""
